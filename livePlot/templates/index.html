@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOA Visualization Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- CSV File Selector -->
+        <div class="file-selector-container">
+            <label for="csv_selector" style="font-weight: 600;">Select CSV File:</label>
+            <select id="csv_selector" class="file-selector">
+                {% for file in csv_files %}
+                    {% if file == current_file %}
+                        <option value="{{ file }}" selected>{{ file }}</option>
+                    {% else %}
+                        <option value="{{ file }}">{{ file }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <span id="file_status"></span>
+        </div>
+        
+        <!-- Graph 1: Interactive with Slider -->
+        <div class="graph-section">
+            <h2>Graph 1: Filtered DOA with SPL Threshold Control</h2>
+            
+            <!-- Slider Controls -->
+            <div class="slider-container">
+                <label for="spl_slider">SPL Threshold (dB):</label>
+                <input 
+                    type="range" 
+                    id="spl_slider" 
+                    min="{{ spl_min }}" 
+                    max="{{ spl_max }}" 
+                    step="0.1"
+                    value="{{ spl_init }}"
+                    class="slider"
+                >
+                <span id="spl_value">{{ spl_init|round(2) }}</span> dB
+            </div>
+            
+            <!-- Plot Container -->
+            <div id="plot1" class="plot-container">
+                {{ filtered_plot|safe }}
+            </div>
+            
+            <!-- Download Button -->
+            <button onclick="downloadPlot('plot1', 'graph1_filtered.png')" class="download-btn">
+                Download Graph 1 as PNG
+            </button>
+        </div>
+        
+        <!-- Separator -->
+        <hr class="separator">
+        
+        <!-- Graph 2: Static Full Dataset -->
+        <div class="graph-section">
+            <h2>Graph 2: Full DOA Dataset (Static)</h2>
+            
+            <!-- Plot Container -->
+            <div id="plot2" class="plot-container">
+                {{ static_plot|safe }}
+            </div>
+            
+            <!-- Download Button -->
+            <button onclick="downloadPlot('plot2', 'graph2_full.png')" class="download-btn">
+                Download Graph 2 as PNG
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✓ Page loaded');
+            
+            const csvSelector = document.getElementById('csv_selector');
+            const slider = document.getElementById('spl_slider');
+            const spl_value_display = document.getElementById('spl_value');
+            const plot1Container = document.getElementById('plot1');
+            const plot2Container = document.getElementById('plot2');
+            const file_status = document.getElementById('file_status');
+
+            // ===== CSV FILE SELECTOR CHANGE EVENT =====
+            csvSelector.addEventListener('change', function() {
+                const selectedFile = this.value;
+                console.log('📁 CSV file selected:', selectedFile);
+                
+                // Show loading status
+                file_status.textContent = '⏳ Loading...';
+                file_status.style.color = '#3498db';
+                csvSelector.disabled = true;
+                
+                // Fade out plots
+                plot1Container.style.opacity = '0.5';
+                plot2Container.style.opacity = '0.5';
+                
+                // Send request to load new CSV
+                fetch('/load_csv', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: selectedFile })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Status ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data.success) throw new Error(data.error);
+                    
+                    console.log('✓ CSV loaded successfully');
+                    
+                    // Update slider range and value
+                    slider.min = data.spl_min;
+                    slider.max = data.spl_max;
+                    slider.value = data.spl_min;
+                    spl_value_display.textContent = data.spl_min.toFixed(2);
+                    
+                    console.log('📊 Slider updated: min=' + data.spl_min.toFixed(2) + ', max=' + data.spl_max.toFixed(2));
+                    
+                    // Update plots
+                    plot1Container.innerHTML = '';
+                    plot1Container.style.opacity = '1';
+                    plot1Container.innerHTML = data.filtered_plot;
+                    executeScriptsInContainer(plot1Container);
+                    
+                    plot2Container.innerHTML = '';
+                    plot2Container.style.opacity = '1';
+                    plot2Container.innerHTML = data.static_plot;
+                    executeScriptsInContainer(plot2Container);
+                    
+                    // Update status
+                    file_status.textContent = '✓ Loaded';
+                    file_status.style.color = '#27ae60';
+                    
+                    setTimeout(() => {
+                        file_status.textContent = '';
+                    }, 2000);
+                    
+                    console.log('✓ Both plots updated');
+                })
+                .catch(error => {
+                    console.error('❌ Error:', error);
+                    file_status.textContent = '✗ Error loading file';
+                    file_status.style.color = '#e74c3c';
+                    plot1Container.style.opacity = '1';
+                    plot2Container.style.opacity = '1';
+                })
+                .finally(() => {
+                    csvSelector.disabled = false;
+                });
+            });
+
+            // ===== SLIDER CHANGE EVENT =====
+            slider.addEventListener('input', function() {
+                const threshold = parseFloat(this.value);
+                spl_value_display.textContent = threshold.toFixed(2);
+                console.log('📊 Slider moved to:', threshold);
+
+                plot1Container.style.opacity = '0.5';
+
+                fetch('/update_filtered', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ threshold: threshold })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Status ${response.status}`);
+                    return response.text();
+                })
+                .then(htmlString => {
+                    console.log('📈 Received', htmlString.length, 'bytes');
+                    
+                    plot1Container.innerHTML = '';
+                    plot1Container.style.opacity = '1';
+                    plot1Container.innerHTML = htmlString;
+                    executeScriptsInContainer(plot1Container);
+                    
+                    console.log('✓ Plot updated!');
+                })
+                .catch(error => {
+                    console.error('❌ Error:', error);
+                    plot1Container.innerHTML = '<p style="color: red; padding: 20px;">Error: ' + error.message + '</p>';
+                    plot1Container.style.opacity = '1';
+                });
+            });
+        });
+
+        // Helper function to execute scripts in a container
+        function executeScriptsInContainer(container) {
+            const scripts = container.querySelectorAll('script');
+            console.log('Found', scripts.length, 'scripts to execute');
+            
+            scripts.forEach((script, index) => {
+                if (script.textContent) {
+                    try {
+                        const newScript = document.createElement('script');
+                        newScript.textContent = script.textContent;
+                        newScript.type = 'text/javascript';
+                        container.appendChild(newScript);
+                    } catch (err) {
+                        console.error('Error executing script', index, ':', err);
+                    }
+                }
+            });
+        }
+
+        // Download function for Plotly charts
+        function downloadPlot(plotId, filename) {
+            console.log('💾 Attempting download:', filename);
+            try {
+                Plotly.downloadImage(plotId, {
+                    format: 'png',
+                    width: 1200,
+                    height: 800,
+                    filename: filename
+                });
+                console.log('✓ Download started');
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Download starting... Check your Downloads folder.');
+            }
+        }
+    </script>
+</body>
+</html>

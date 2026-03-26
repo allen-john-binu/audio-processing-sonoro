@@ -1,0 +1,241 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: white;
+    min-height: 100vh;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #2c3e50;
+    font-size: 28px;
+}
+
+/* File Selector Container */
+.file-selector-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #ecf0f1;
+    border-radius: 6px;
+    border-left: 4px solid #3498db;
+}
+
+.file-selector-container label {
+    font-weight: 600;
+    color: #2c3e50;
+    min-width: 120px;
+}
+
+.file-selector {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #3498db;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: white;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.file-selector:hover {
+    border-color: #2980b9;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+.file-selector:focus {
+    outline: none;
+    border-color: #2980b9;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+}
+
+.file-selector:disabled {
+    background-color: #ecf0f1;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+#file_status {
+    font-weight: 600;
+    min-width: 80px;
+    text-align: right;
+}
+
+h2 {
+    color: #34495e;
+    font-size: 18px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+}
+
+/* Graph Section */
+.graph-section {
+    margin-bottom: 40px;
+    padding: 20px;
+    background-color: #fafafa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Slider Container */
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #ecf0f1;
+    border-radius: 6px;
+}
+
+.slider-container label {
+    font-weight: 600;
+    color: #2c3e50;
+    min-width: 150px;
+}
+
+.slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #3498db, #2ecc71);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3498db;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3498db;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+#spl_value {
+    font-weight: 700;
+    color: #3498db;
+    min-width: 50px;
+    text-align: right;
+}
+
+/* Plot Container */
+.plot-container {
+    width: 100%;
+    margin: 20px 0;
+    background-color: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 10px;
+    transition: opacity 0.3s ease;
+}
+
+/* Download Button */
+.download-btn {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+    margin-top: 10px;
+}
+
+.download-btn:hover {
+    background-color: #229954;
+}
+
+.download-btn:active {
+    transform: scale(0.98);
+}
+
+/* Separator */
+.separator {
+    border: none;
+    border-top: 2px solid #bdc3c7;
+    margin: 40px 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 22px;
+        margin-bottom: 15px;
+    }
+
+    .file-selector-container {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .file-selector-container label {
+        min-width: 100%;
+    }
+
+    .file-selector {
+        width: 100%;
+    }
+
+    .graph-section {
+        padding: 15px;
+        margin-bottom: 30px;
+    }
+
+    .slider-container {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .slider-container label {
+        min-width: 100%;
+    }
+
+    .slider {
+        width: 100%;
+    }
+}
+
+/* Plotly customizations */
+.plot-container :deep(.plotly-graph-div) {
+    width: 100% !important;
+}
