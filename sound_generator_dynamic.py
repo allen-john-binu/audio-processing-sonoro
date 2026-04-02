@@ -21,7 +21,7 @@ for durn in durns:
 
 sweeps_combined = np.concatenate(all_sweeps)
 
-target_duration = 120  # seconds
+target_duration = 80  # seconds
 repeats = int(np.ceil(target_duration / (len(sweeps_combined) / fs)))
 long_signal = np.tile(sweeps_combined, repeats)
 long_signal = long_signal[:int(fs * target_duration)]
@@ -29,11 +29,23 @@ long_signal = long_signal[:int(fs * target_duration)]
 # =========================
 # Volume envelopes
 # =========================
+# def left_volume_envelope(t):
+#     return 0.58
+
+# def right_volume_envelope(t):
+#     return 1.0
+
+delta = 0.025      # try: 0.025, 0.05, 0.1, 0.15
+mod_freq = 0.2  # Hz
+
+base_left = 0.4
+base_right = 0.82
+
 def left_volume_envelope(t):
-    return 0.70
+    return base_left + delta * np.sin(2 * np.pi * mod_freq * t)
 
 def right_volume_envelope(t):
-    return 1.0
+    return base_right - delta * np.sin(2 * np.pi * mod_freq * t)
 
 time_vector = np.arange(len(long_signal)) / fs
 left_volumes = np.array([left_volume_envelope(t) for t in time_vector])

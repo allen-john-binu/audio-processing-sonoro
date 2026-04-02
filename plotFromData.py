@@ -6,7 +6,7 @@ from matplotlib import gridspec
 # -----------------------------
 # 1. Load CSV
 # -----------------------------
-file_path = "dataFromReal/23_03_data_2.csv"
+file_path = "hi.csv"
 df = pd.read_csv(file_path)
 
 # -----------------------------
