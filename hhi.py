@@ -2,16 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # =========================
-# Parameters (edit freely)
+# Parameters
 # =========================
-delta = 0.025    # try: 0.025, 0.05, 0.1, 0.15
-mod_freq = 0.2     # Hz
-
+sigma = 0.1      # try: 0.025, 0.05, 0.1, 0.2
 base_left = 0.4
-base_right = 0.82
+base_right = 0.8
 
-duration = 20      # seconds
-fs_plot = 1000     # samples per second
+duration = 20
+fs_plot = 1000
+
+np.random.seed(0)  # reproducible
 
 # =========================
 # Time vector
@@ -19,10 +19,20 @@ fs_plot = 1000     # samples per second
 t = np.linspace(0, duration, int(fs_plot * duration))
 
 # =========================
-# Envelope functions (UPDATED)
+# Independent Gaussian noise
 # =========================
-left = base_left + delta * np.sin(2 * np.pi * mod_freq * t)
-right = base_right - delta * np.sin(2 * np.pi * mod_freq * t)
+noise_left = np.random.normal(0, sigma, size=len(t))
+noise_right = np.random.normal(0, sigma, size=len(t))
+
+# =========================
+# Envelopes
+# =========================
+left = base_left + noise_left
+right = base_right + noise_right
+
+# Optional safety clipping
+left = np.clip(left, 0.0, 1.0)
+right = np.clip(right, 0.0, 1.0)
 
 # =========================
 # Plot
@@ -32,15 +42,10 @@ plt.figure()
 plt.plot(t, left, label="Left Channel")
 plt.plot(t, right, label="Right Channel")
 
-# Baselines
 plt.axhline(base_left, linestyle='--', linewidth=1, label="Left Base")
 plt.axhline(base_right, linestyle='--', linewidth=1, label="Right Base")
 
-# Optional: sum (should be constant)
-total = left + right
-plt.plot(t, total, linestyle=':', label="Left + Right (constant)")
-
-plt.title(f"Opposite Phase Envelopes (delta={delta}, freq={mod_freq} Hz)")
+plt.title(f"Independent Gaussian Modulation (sigma={sigma})")
 plt.xlabel("Time (seconds)")
 plt.ylabel("Amplitude")
 
