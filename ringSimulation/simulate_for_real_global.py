@@ -10,9 +10,6 @@ seed = 100
 np.random.seed(seed)
 py_seed(seed)
 
-target_pos1 = np.array([50.0, 50.0])  
-target_pos2 = np.array([50.0, -50.0])  
-
 class RA():
     def __init__(self):
         self.Ns = 120
@@ -34,7 +31,7 @@ import csv
 
 normalizing_factor = 0.1546
 
-input_file = "../dataFromReal/doa_results/expA/roomA_test_20260330_114124.csv"
+input_file = "../dataFromReal/doa_results/expA/exA1.csv"
 output_file = "expanded_output.csv"
 all_values = []
 rows_data = []
@@ -101,29 +98,6 @@ with open(output_file, "w", newline='') as f:
 print("Done! Data normalized to 0–0.1546")
 
 print("length of normalized_rows: ",len(normalized_rows))
-
-# # Pick a random row
-# rwo_to_plot = normalized_rows[168]
-
-# timestamp = rwo_to_plot[0]
-# y = rwo_to_plot[1:]
-
-# # X axis (angles)
-# x = list(range(-180, 180, 3))
-
-# # Labels
-# xlabel = "Angle (degrees)"
-# ylabel = "Normalized Value"
-# title = f"Radiation Pattern @ {timestamp}"
-
-# # Plot
-# plt.figure(figsize=(5, 4))
-# plt.plot(x, y)
-# plt.xlabel(xlabel)
-# plt.ylabel(ylabel)
-# plt.title(title)
-# plt.show()
-
 
 bump_angles = np.zeros(len(normalized_rows))
 

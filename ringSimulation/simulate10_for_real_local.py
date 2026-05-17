@@ -27,7 +27,7 @@ import csv
 
 normalizing_factor = 0.1546
 
-input_file = "../dataFromReal/doa_results/expA/roomA_test_20260330_114124.csv"
+input_file = "../dataFromReal/doa_results/expA/exA1.csv"
 rows_data = []
 
 # ---------- FIRST PASS: read + collect values ----------

@@ -32,7 +32,7 @@ import csv
 
 normalizing_factor = 0.1546
 
-input_file = "../dataFromReal/doa_results/expA/roomA_test_20260330_114124.csv"
+input_file = "../dataFromReal/doa_results/expA/exA1.csv"
 rows_data = []
 
 # ---------- FIRST PASS: read + collect values ----------
@@ -127,6 +127,21 @@ for bumpCount, row in enumerate(normalized_rows):
         print("timestamp: ", timestamp, "bump angle: ", bump_angles[bumpCount])
 
 print("length of bump_angles: ",len(bump_angles))
+
+
+#Labels
+xlabel = "time step"
+ylabel = "bump angle (degrees)"
+title = "Bump Angle Over Time"
+
+# Plot
+plt.figure(figsize=(5, 4))
+plt.plot(bump_angles)
+plt.xlabel(xlabel)
+plt.ylabel(ylabel)
+plt.title(title)
+plt.show()
+
 
 howLong = len(bump_angles)
 
