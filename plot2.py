@@ -9,7 +9,7 @@ import scipy.signal as signal
 # -----------------------------
 # 1. Load CSV
 # -----------------------------
-file_path = "hi.csv"
+file_path = "./dataFromReal/doa_results/expCA/exCA1.csv"
 df = pd.read_csv(file_path)
 
 angle_cols = df.columns[2:]

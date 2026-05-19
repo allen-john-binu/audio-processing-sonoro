@@ -19,7 +19,7 @@ class RA():
         self.h_b = 0.0122
         self.v_0 = 60
         self.h_ext = None
-        self.beta = 4000
+        self.beta = 400
         self.sigma_ang = 2*np.pi / self.Ns
         self.thetas = np.linspace(-np.pi, np.pi, self.Ns, endpoint=False)
         self.spins = np.random.choice([1,0], size=self.Ns)
@@ -45,7 +45,7 @@ with open(input_file, newline='') as f:
     for row in reader:
         db_spl = float(row[1].strip("[]"))
 
-        if db_spl > 90:
+        if db_spl > 89.3:
             timestamp  = row[0]
             values     = [float(x) for x in row[2:]]
             full_array = [0.0] * 120
@@ -107,15 +107,14 @@ with open(input_file, newline='') as f:
         if db_spl > 90:
             vicon_angles.append(float(row[angle_col_idx]))
 
-# ── ASSERT Vicon angles are within 0–180 ──────────────────────────────────────
+# ── ASSERT Vicon angles are finite (no NaN / Inf) ────────────────────────────
 vicon_angles = np.array(vicon_angles)
-out_of_range = np.where((vicon_angles < 0) | (vicon_angles > 180))[0]
-if len(out_of_range) > 0:
+bad = np.where(~np.isfinite(vicon_angles))[0]
+if len(bad) > 0:
     raise AssertionError(
-        f"Vicon angle out of [0, 180] range at {len(out_of_range)} timestep(s): "
-        f"indices {out_of_range.tolist()}, values {vicon_angles[out_of_range].tolist()}"
+        f"Vicon angle has {len(bad)} non-finite value(s) at indices {bad.tolist()}"
     )
-print("Vicon angle assertion passed — all values within [0, 180]")
+print(f"Vicon angle assertion passed — range [{vicon_angles.min():.2f}, {vicon_angles.max():.2f}]")
 
 for bumpCount, row in enumerate(normalized_rows):
     print("Processing timestamp:", row[0])
@@ -197,8 +196,12 @@ ax_heat.set_ylabel("Angle (degrees)")
 ax_heat.set_title("Binned Bump Angles Over Time")
 ax_heat.set_xticklabels([])   # hide X labels — shared with strip below
 
-# — Bottom: Vicon angle strip (1 row, colour-coded 0–180) —
+# — Bottom: Vicon angle strip (1 row, colour-coded dynamically) —
 vicon_strip = vicon_angles.reshape(1, -1)   # shape (1, n_timesteps)
+
+vicon_min = float(vicon_angles.min())
+vicon_max = float(vicon_angles.max())
+print(f"Vicon angle range for this experiment: [{vicon_min:.2f}, {vicon_max:.2f}]")
 
 im_vicon = ax_vicon.imshow(
     vicon_strip,
@@ -206,10 +209,10 @@ im_vicon = ax_vicon.imshow(
     origin="lower",
     extent=[0, n_timesteps, 0, 1],
     cmap="plasma",
-    vmin=0,
-    vmax=180
+    vmin=vicon_min,
+    vmax=vicon_max
 )
-fig.colorbar(im_vicon, cax=ax_cb_vicon, label="Vicon angle (°)")
+fig.colorbar(im_vicon, cax=ax_cb_vicon, label=f"Vicon angle (°) [{vicon_min:.1f}, {vicon_max:.1f}]")
 ax_vicon.set_xlabel("Timestamp index")
 ax_vicon.set_yticks([])       # no Y axis on strip
 

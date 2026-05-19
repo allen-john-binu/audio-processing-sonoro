@@ -1,0 +1,6 @@
+file,total_timesteps,optimal_threshold,kept_timesteps,retention_%,mean_SPL_all,mean_SPL_kept,mean_peak_intens,global_retention_%
+exDA1.csv,234,88.34,119,50.9,82.82,92.41,2.657e-06,51.3
+exDA2.csv,225,88.34,120,53.3,83.42,92.55,2.777e-06,53.8
+exDA3.csv,228,88.74,126,55.3,84.79,92.54,2.728e-06,57.9
+exDA4.csv,207,88.74,103,49.8,82.76,92.8,2.855e-06,51.7
+exDA5.csv,236,88.14,115,48.7,81.92,91.9,2.780e-06,48.7

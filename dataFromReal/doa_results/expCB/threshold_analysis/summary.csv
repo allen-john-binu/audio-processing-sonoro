@@ -1,0 +1,6 @@
+file,total_timesteps,optimal_threshold,kept_timesteps,retention_%,mean_SPL_all,mean_SPL_kept,mean_peak_intens,global_retention_%
+exCB1.csv,228,86.13,127,55.7,83.44,90.8,2.742e-06,54.4
+exCB2.csv,257,85.33,131,51.0,81.97,90.27,2.611e-06,47.9
+exCB3.csv,231,86.33,121,52.4,82.42,90.7,2.728e-06,52.8
+exCB4.csv,227,86.53,116,51.1,83.13,90.99,2.703e-06,52.9
+exCB5.csv,223,87.14,119,53.4,83.36,91.02,2.756e-06,57.0
