@@ -54,24 +54,36 @@ long_signal = long_signal[:int(fs * target_duration)]
 # =========================
 # Gaussian parameters
 # =========================
-sigma = 0.1  # try: 0.025, 0.05, 0.1, 0.2
+# sigma = 0.1  # try: 0.025, 0.05, 0.1, 0.2
 
-base_left = 0.4
-base_right = 0.8
+# base_left = 0.4
+# base_right = 0.8
 
-# =========================
-# Generate noise (once)
-# =========================
-np.random.seed(0)  # optional (reproducible)
+# # =========================
+# # Generate noise (once)
+# # =========================
+# np.random.seed(0)  # optional (reproducible)
 
-noise_left = np.random.normal(0, sigma, size=len(long_signal))
-noise_right = np.random.normal(0, sigma, size=len(long_signal))
+# noise_left = np.random.normal(0, sigma, size=len(long_signal))
+# noise_right = np.random.normal(0, sigma, size=len(long_signal))
 
+# # =========================
+# # Volume envelopes (arrays)
+# # =========================
+# left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
+# right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
 # =========================
-# Volume envelopes (arrays)
+# Constant volumes
 # =========================
-left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
-right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
+# =========================
+# Constant channel volumes
+# =========================
+base_left = 1.0
+
+base_right = 0.5
+
+left_volumes = np.full(len(long_signal), base_left)
+right_volumes = np.full(len(long_signal), base_right)
 
 stereo_signal = np.column_stack((
     long_signal * left_volumes,

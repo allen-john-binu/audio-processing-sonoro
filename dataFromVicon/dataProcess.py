@@ -84,8 +84,26 @@ def process_run(robot_path, t1_path, t2_path, out_path, eps, min_samples, dry_ru
             axis=1,
         )
 
+        # add fixed target positions to every row
+        robot["x1"] = x1
+        robot["y1"] = y1
+        robot["x2"] = x2
+        robot["y2"] = y2
+
+        # rename robot coordinates for clarity
+        robot["robot_x"] = robot["x"]
+        robot["robot_y"] = robot["y"]
+
         if not dry_run:
-            robot[["timestamp", "angle"]].to_csv(out_path, index=False)
+            robot[
+                [
+                    "timestamp",
+                    "angle",
+                    "x1", "y1",
+                    "x2", "y2",
+                    "robot_x", "robot_y",
+                ]
+            ].to_csv(out_path, index=False)
         return True
 
     except Exception as exc:

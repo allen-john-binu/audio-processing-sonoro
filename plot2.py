@@ -1,4 +1,6 @@
 import numpy as np
+import sys
+import pathlib
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
@@ -6,17 +8,33 @@ import scipy.signal as signal
 
 #negative angle robot is on the left, positive angle robot is on the right. 
 
+
+ANGLE_START = 2
+ANGLE_END = -11
+
+
 # -----------------------------
 # 1. Load CSV
 # -----------------------------
-file_path = "./dataFromReal/doa_results/expCA/exCA1.csv"
+if len(sys.argv) < 2:
+    print("Usage: python3 plot_bump_stats.py <path_to_csv>")
+    sys.exit(1)
+
+csv_path = pathlib.Path(sys.argv[1])
+if not csv_path.exists():
+    print(f"Error: file not found — {csv_path}")
+    sys.exit(1)
+
+file_path = str(csv_path)
 df = pd.read_csv(file_path)
 
-angle_cols = df.columns[2:]
+angle_cols = df.columns[ANGLE_START:ANGLE_END]
 angles = np.array([float(a) for a in angle_cols])
 
+
 spl_array = df["dB_SPL"].astype(str).str.strip("[]").astype(float).values
-intensity_matrix = df.iloc[:, 2:].values.astype(float)
+
+intensity_matrix = df.iloc[:, ANGLE_START:ANGLE_END].values.astype(float)
 
 # -----------------------------
 # 2. Angle spacing fix

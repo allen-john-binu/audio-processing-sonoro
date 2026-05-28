@@ -238,7 +238,15 @@ def merge_run(vicon_path, sound_path, real_path):
     # Real is master (left) — output rows == len(real)
     merged = pd.merge_asof(
         real_sorted,
-        vicon_sorted.rename(columns={"timestamp": "timestamp_vicon"}),
+        vicon_sorted[
+            [
+                "timestamp",
+                "angle",
+                "x1", "y1",
+                "x2", "y2",
+                "robot_x", "robot_y",
+            ]
+        ].rename(columns={"timestamp": "timestamp_vicon"}),
         left_on="timestamp",
         right_on="timestamp_vicon",
         direction="nearest"

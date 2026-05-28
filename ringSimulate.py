@@ -44,8 +44,100 @@ class RA():
         self.updates_per_step = int(round(self.Ns * 4))
 
 
+# ── Helper Functions for Group Analysis ────────────────────────────────────────
+def find_contiguous_groups(spins):
+    """
+    Find all contiguous blocks of 1s in the spins array.
+    
+    Args:
+        spins: 1D numpy array of 0s and 1s
+    
+    Returns:
+        List of tuples: [(start_idx, end_idx, length), ...]
+        Sorted by length in descending order.
+        Returns empty list if no 1s found.
+    """
+    groups = []
+    in_group = False
+    start_idx = 0
+    
+    for i in range(len(spins)):
+        if spins[i] == 1:
+            if not in_group:
+                start_idx = i
+                in_group = True
+        else:  # spins[i] == 0
+            if in_group:
+                length = i - start_idx
+                groups.append((start_idx, i - 1, length))
+                in_group = False
+    
+    # Handle case where array ends with 1s
+    if in_group:
+        length = len(spins) - start_idx
+        groups.append((start_idx, len(spins) - 1, length))
+    
+    # Sort by length descending
+    groups.sort(key=lambda x: x[2], reverse=True)
+    return groups
+
+
+def circular_mean_angle(thetas_subset):
+    """
+    Compute circular mean of angles using atan2.
+    
+    Args:
+        thetas_subset: 1D array of angles in radians
+    
+    Returns:
+        Circular mean in degrees (range -180 to 180)
+    """
+    if len(thetas_subset) == 0:
+        return 0.0
+    
+    sin_sum = np.sum(np.sin(thetas_subset))
+    cos_sum = np.sum(np.cos(thetas_subset))
+    circular_mean_rad = np.arctan2(sin_sum, cos_sum)
+    circular_mean_deg = math.degrees(circular_mean_rad)
+    return circular_mean_deg
+
+
+def extract_group_stats(spins, thetas, ring_obj):
+    """
+    Extract largest and second-largest contiguous 1s groups.
+    
+    Args:
+        spins: 1D numpy array of spins (0s and 1s)
+        thetas: 1D numpy array of angles (in radians)
+        ring_obj: The RA ring object (for reference, though thetas are passed)
+    
+    Returns:
+        Tuple: (group1_length, group1_angle, group2_length, group2_angle)
+        If fewer than 2 groups, missing ones default to (0, 0.0)
+    """
+    groups = find_contiguous_groups(spins)
+    
+    # Initialize defaults
+    group1_length, group1_angle = 0, 0.0
+    group2_length, group2_angle = 0, 0.0
+    
+    if len(groups) >= 1:
+        start1, end1, len1 = groups[0]
+        group1_length = len1
+        thetas_group1 = thetas[start1:end1 + 1]
+        group1_angle = circular_mean_angle(thetas_group1)
+    
+    if len(groups) >= 2:
+        start2, end2, len2 = groups[1]
+        group2_length = len2
+        thetas_group2 = thetas[start2:end2 + 1]
+        group2_angle = circular_mean_angle(thetas_group2)
+    
+    return group1_length, group1_angle, group2_length, group2_angle
+
+
 # ── Per-file pipeline ──────────────────────────────────────────────────────────
-def process_file(input_path, output_csv_path, output_plot_path):
+def process_file(input_path, output_csv_path, output_plot_path, include_groups=False):
     filename = os.path.basename(input_path)
     print(f"\n{'=' * 60}")
     print(f"Processing: {filename}")
@@ -53,16 +145,28 @@ def process_file(input_path, output_csv_path, output_plot_path):
 
     all_values = []
     rows_data  = []
-    extra_cols = []   # [angle, sample_index, time_seconds, left_volume, right_volume]
+    extra_cols = []   # [angle, x1, y1, x2, y2, robot_x, robot_y, sample_index, time_seconds, left_volume, right_volume]    
 
     # ── FIRST PASS: filter + build ring arrays ─────────────────────────────────
     with open(input_path, newline='') as f:
         reader    = csv.reader(f)
         header    = next(reader)
-        csv_angles = [int(float(a)) for a in header[2:-5]]
-
+        
+        # Find where DOA columns end (they are numeric angles from -90 to 90)
+        # Metadata columns start with "angle"
+        angle_idx = header.index("angle")
+        
+        # DOA values are between dB_SPL (index 1) and angle metadata column
+        doa_headers = header[2:angle_idx]
+        csv_angles = [int(float(a)) for a in doa_headers]
+        
         # Indices for extra columns
-        angle_idx        = header.index("angle")
+        x1_idx       = header.index("x1")
+        y1_idx       = header.index("y1")
+        x2_idx       = header.index("x2")
+        y2_idx       = header.index("y2")
+        robot_x_idx  = header.index("robot_x")
+        robot_y_idx  = header.index("robot_y")
         sample_idx       = header.index("sample_index")
         time_idx         = header.index("time_seconds")
         left_vol_idx     = header.index("left_volume")
@@ -72,7 +176,8 @@ def process_file(input_path, output_csv_path, output_plot_path):
             db_spl = float(row[1].strip("[]"))
             if db_spl > DB_SPL_THRESHOLD:
                 timestamp  = row[0]
-                values     = [float(x) for x in row[2:-5]]
+                # Extract DOA values (from index 2 to angle_idx)
+                values     = [float(x) for x in row[2:angle_idx]]
                 full_array = [0.0] * 120
 
                 for angle, value in zip(csv_angles, values):
@@ -84,6 +189,12 @@ def process_file(input_path, output_csv_path, output_plot_path):
                 rows_data.append((timestamp, full_array))
                 extra_cols.append([
                     float(row[angle_idx]),
+                    row[x1_idx],
+                    row[y1_idx],
+                    row[x2_idx],
+                    row[y2_idx],
+                    row[robot_x_idx],
+                    row[robot_y_idx],
                     row[sample_idx],
                     row[time_idx],
                     row[left_vol_idx],
@@ -123,6 +234,13 @@ def process_file(input_path, output_csv_path, output_plot_path):
     # ── RING ATTRACTOR ─────────────────────────────────────────────────────────
     n_timesteps = len(normalized_rows)
     bump_angles = np.zeros((n_timesteps, N_BUMP_RUNS))
+    
+    if include_groups:
+        # New arrays for group statistics 
+        group1_lengths = np.zeros((n_timesteps, N_BUMP_RUNS))
+        group1_angles  = np.zeros((n_timesteps, N_BUMP_RUNS))
+        group2_lengths = np.zeros((n_timesteps, N_BUMP_RUNS))
+        group2_angles  = np.zeros((n_timesteps, N_BUMP_RUNS))
 
     for bumpCount, row in enumerate(normalized_rows):
         print(f"  Timestep {bumpCount + 1}/{n_timesteps} — {row[0]}")
@@ -147,20 +265,73 @@ def process_file(input_path, output_csv_path, output_plot_path):
                 phi = 0.0
 
             bump_angles[bumpCount, countIn] = math.degrees(phi)
+            
+            if include_groups:
+                # Extract group statistics from final spins state
+                g1_len, g1_ang, g2_len, g2_ang = extract_group_stats(
+                    ring.spins, ring.thetas, ring
+                )
+                group1_lengths[bumpCount, countIn] = g1_len
+                group1_angles[bumpCount, countIn]  = g1_ang
+                group2_lengths[bumpCount, countIn] = g2_len
+                group2_angles[bumpCount, countIn]  = g2_ang
 
     # ── SAVE CSV ───────────────────────────────────────────────────────────────
-    bump_cols   = [f"bump{i + 1}" for i in range(N_BUMP_RUNS)]
-    extra_names = ["angle", "sample_index", "time_seconds", "left_volume", "right_volume", "dB_SPL"]
-    out_header  = ["timestamp"] + bump_cols + extra_names
+    bump_cols       = [f"bump{i + 1}" for i in range(N_BUMP_RUNS)]
+    group1_len_cols = [f"group1_len_{i + 1}" for i in range(N_BUMP_RUNS)]
+    group1_ang_cols = [f"group1_angle_{i + 1}" for i in range(N_BUMP_RUNS)]
+    group2_len_cols = [f"group2_len_{i + 1}" for i in range(N_BUMP_RUNS)]
+    group2_ang_cols = [f"group2_angle_{i + 1}" for i in range(N_BUMP_RUNS)]
+    
+    extra_names = [
+        "angle",
+        "x1", "y1",
+        "x2", "y2",
+        "robot_x", "robot_y",
+        "sample_index",
+        "time_seconds",
+        "left_volume",
+        "right_volume",
+        "dB_SPL"
+    ]
+    
+    out_header  = (["timestamp"] + bump_cols)
+    
+    if include_groups:
+        out_header += (
+            group1_len_cols +
+            group1_ang_cols +
+            group2_len_cols +
+            group2_ang_cols
+        )
+    
+    out_header += extra_names
 
     with open(output_csv_path, "w", newline='') as f:
         writer = csv.writer(f)
         writer.writerow(out_header)
         for i, row in enumerate(normalized_rows):
+            
             timestamp  = row[0]
             bumps      = bump_angles[i].tolist()
             extras     = extra_cols[i]
-            writer.writerow([timestamp] + bumps + extras)
+            row_data = [timestamp] + bumps
+
+            if include_groups:
+                g1_lens    = group1_lengths[i].tolist()
+                g1_angs    = group1_angles[i].tolist()
+                g2_lens    = group2_lengths[i].tolist()
+                g2_angs    = group2_angles[i].tolist()
+                row_data += (
+                    g1_lens +
+                    g1_angs +
+                    g2_lens +
+                    g2_angs
+                )
+
+            row_data += extras
+
+            writer.writerow(row_data)
 
     print(f"  Saved CSV  → {output_csv_path}")
 
@@ -235,6 +406,11 @@ def main():
         help="Experiment group to process (e.g. expA, expBA). "
              "If omitted, all files are processed."
     )
+    parser.add_argument(
+        "--include-groups",
+        action="store_true",
+        help="Include group statistics in output CSV."
+    )
     args = parser.parse_args()
 
     # Determine output subfolder and file glob
@@ -260,7 +436,12 @@ def main():
         output_csv_path  = os.path.join(output_dir, f"{stem}_bumps.csv")
         output_plot_path = os.path.join(output_dir, f"{stem}_plot.png")
         try:
-            process_file(input_path, output_csv_path, output_plot_path)
+            process_file(
+                input_path,
+                output_csv_path,
+                output_plot_path,
+                include_groups=args.include_groups
+            )
         except Exception as e:
             print(f"  [ERROR] {os.path.basename(input_path)}: {e}")
 
