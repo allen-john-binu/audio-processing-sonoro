@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DOA Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+        :root {
+            --bg: #0d0f14;
+            --surface: #13161e;
+            --border: #1f2433;
+            --accent: #00e5ff;
+            --accent2: #ff6b35;
+            --accent3: #7fff6b;
+            --muted: #4a5268;
+            --text: #c8d0e0;
+            --text-dim: #6b7590;
+            --font-mono: 'IBM Plex Mono', monospace;
+            --font-sans: 'IBM Plex Sans', sans-serif;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-sans);
+            font-size: 14px;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 28px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            flex-shrink: 0;
+        }
+
+        header .logo {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        header .divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+        }
+
+        /* ── Controls bar ── */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 28px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .controls label {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-dim);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        select {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            min-width: 200px;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        button:hover {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        button.secondary {
+            color: var(--text-dim);
+            border-color: var(--border);
+        }
+
+        button.secondary:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        /* ── Slider ── */
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+            flex-wrap: wrap;
+        }
+
+        .slider-row label {
+            white-space: nowrap;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 220px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+        }
+
+        #spl-val {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--accent);
+            min-width: 60px;
+        }
+
+        /* ── Status bar ── */
+        #status {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-dim);
+            padding: 6px 28px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+            min-height: 26px;
+            flex-shrink: 0;
+        }
+
+        #status.error {
+            color: #ff4d4d;
+        }
+
+        #status.ok {
+            color: var(--accent3);
+        }
+
+        /* ── Main layout ── */
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            background: var(--border);
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .panel-title {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .panel-title span {
+            color: var(--accent);
+            margin-right: 6px;
+        }
+
+        .plot-wrap {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* ── Plotly overrides ── */
+        .js-plotly-plot .plotly .modebar {
+            background: transparent !important;
+        }
+
+        .js-plotly-plot .plotly .modebar-btn path {
+            fill: var(--muted) !important;
+        }
+
+        /* ── Empty state ── */
+        .empty-state {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--muted);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        .empty-state svg {
+            opacity: 0.3;
+        }
+
+        /* ── Loading overlay ── */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(13, 15, 20, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--accent);
+            letter-spacing: 0.08em;
+            backdrop-filter: blur(2px);
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">◈ DOA Dashboard</div>
+        <div class="divider"></div>
+        <span style="font-size:12px;color:var(--text-dim);font-family:var(--font-mono)">Direction of Arrival ·
+            Visualization Suite</span>
+    </header>
+
+    <div class="controls">
+        <label>Run</label>
+        <select id="run-select">
+            <option value="">— select a run —</option>
+        </select>
+        <button id="btn-refresh" class="secondary" title="Refresh run list">↺ Refresh</button>
+        <button id="btn-load" disabled>Load →</button>
+
+        <div style="display:flex;align-items:center;gap:8px;">
+            <label>Colormap</label>
+            <select id="cmap-select">
+                <option value="Inferno" selected>Inferno</option>
+                <option value="Magma">Magma</option>
+                <option value="Plasma">Plasma</option>
+                <option value="Viridis">Viridis</option>
+                <option value="Cividis">Cividis</option>
+                <option value="Hot">Hot</option>
+                <option value="Turbo">Turbo</option>
+            </select>
+        </div>
+
+        <div class="slider-row">
+            <label>SPL Threshold</label>
+            <input type="range" id="spl-slider" min="0" max="100" step="0.1" value="0" disabled />
+            <span id="spl-val">—</span>
+            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)" id="row-count"></span>
+        </div>
+    </div>
+
+    <div id="status">Select a run and press Load.</div>
+
+    <main>
+        <!-- Heatmap -->
+        <div class="panel">
+            <div class="panel-title"><span>01</span>Intensity Heatmap · Angle vs Time</div>
+            <div class="plot-wrap" id="wrap-heatmap">
+                <div class="empty-state" id="empty-heatmap">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+                    </svg>
+                    No data loaded
+                </div>
+                <div class="loading-overlay hidden" id="load-heatmap">
+                    <div class="spinner"></div>Computing…
+                </div>
+                <div id="plot-heatmap" style="width:100%;height:100%"></div>
+            </div>
+        </div>
+
+        <!-- Peak diff -->
+        <div class="panel">
+            <div class="panel-title"><span>02</span>Peak Intensity Difference</div>
+            <div class="plot-wrap" id="wrap-peaks">
+                <div class="empty-state" id="empty-peaks">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                    </svg>
+                    No data loaded
+                </div>
+                <div class="loading-overlay hidden" id="load-peaks">
+                    <div class="spinner"></div>Computing…
+                </div>
+                <div id="plot-peaks" style="width:100%;height:100%"></div>
+            </div>
+        </div>
+
+        <!-- Trajectory -->
+        <div class="panel">
+            <div class="panel-title"><span>03</span>Spatial Trajectory · Bird's-eye View</div>
+            <div class="plot-wrap" id="wrap-traj">
+                <div class="empty-state" id="empty-traj">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                    </svg>
+                    No data loaded
+                </div>
+                <div class="loading-overlay hidden" id="load-traj">
+                    <div class="spinner"></div>Computing…
+                </div>
+                <div id="plot-traj" style="width:100%;height:100%"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ── State ──────────────────────────────────────────────────────────────────────
+        let fullData = null;   // original payload from /api/load
+        let plotInited = false;
+        let activeData = null;   // currently displayed (filtered) data
+        let selectedIdx = null;  // currently selected timestamp index (into activeData)
+
+        // ── Plotly shared layout defaults ──────────────────────────────────────────────
+        const PLOT_BG = '#0d0f14';
+        const GRID_COLOR = '#1f2433';
+        const TEXT_COLOR = '#c8d0e0';
+        const FONT_MONO = 'IBM Plex Mono, monospace';
+
+        function baseLayout(extra = {}) {
+            return Object.assign({
+                paper_bgcolor: PLOT_BG,
+                plot_bgcolor: PLOT_BG,
+                font: { family: FONT_MONO, color: TEXT_COLOR, size: 11 },
+                margin: { t: 10, r: 16, b: 48, l: 56 },
+                xaxis: {
+                    gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
+                    tickfont: { size: 10 }
+                },
+                yaxis: {
+                    gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
+                    tickfont: { size: 10 }
+                },
+                showlegend: true,
+                legend: {
+                    bgcolor: 'rgba(0,0,0,0)',
+                    font: { size: 10 },
+                    x: 0, y: 1
+                },
+            }, extra);
+        }
+
+        const PLOTLY_CONFIG = {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['select2d', 'lasso2d', 'resetScale2d'],
+            displaylogo: false,
+        };
+
+        // ── Helpers ────────────────────────────────────────────────────────────────────
+        function setStatus(msg, cls = '') {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = cls;
+        }
+
+        function showLoading(show) {
+            ['heatmap', 'peaks', 'traj'].forEach(id => {
+                document.getElementById(`load-${id}`).classList.toggle('hidden', !show);
+            });
+        }
+
+        function hideEmpty() {
+            ['heatmap', 'peaks', 'traj'].forEach(id => {
+                document.getElementById(`empty-${id}`).style.display = 'none';
+            });
+        }
+
+        // ── Build heatmap trace ────────────────────────────────────────────────────────
+        function buildHeatmap(data) {
+            const { elapsed, angles, intensity_matrix, peak1, peak2 } = data;
+
+            const cmap = document.getElementById('cmap-select')?.value || 'Inferno';
+
+            const heatTrace = {
+                type: 'heatmap',
+                x: elapsed,
+                y: angles,
+                z: intensity_matrix,  // log-transformed values
+                transpose: true,
+                colorscale: cmap,
+                zmin: data.zmin,
+                zmax: data.zmax,
+                showscale: true,
+                colorbar: {
+                    title: { text: 'Intensity', font: { size: 10 } },
+                    thickness: 12,
+                    tickfont: { size: 9 },
+                },
+                hovertemplate: 'time: %{x:.2f}s<br>angle: %{y}°<br>intensity: %{z:.4e}<extra></extra>',
+            };
+
+            const p1Trace = {
+                type: 'scatter', mode: 'markers',
+                name: 'Peak 1',
+                x: elapsed,
+                y: peak1,
+                marker: { color: '#00e5ff', size: 4, opacity: 0.85 },
+                hovertemplate: 'time: %{x:.2f}s<br>Peak1: %{y}°<extra></extra>',
+            };
+
+            const p2Trace = {
+                type: 'scatter', mode: 'markers',
+                name: 'Peak 2',
+                x: elapsed,
+                y: peak2,
+                marker: { color: '#ff6b35', size: 4, opacity: 0.85 },
+                hovertemplate: 'time: %{x:.2f}s<br>Peak2: %{y}°<extra></extra>',
+            };
+
+            const layout = baseLayout({
+                xaxis: {
+                    title: { text: 'Elapsed (s)', standoff: 8 },
+                    gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
+                    tickfont: { size: 10 },
+                },
+                yaxis: {
+                    title: { text: 'Angle (°)', standoff: 8 },
+                    gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
+                    tickfont: { size: 10 },
+                },
+            });
+
+            return { traces: [heatTrace, p1Trace, p2Trace], layout };
+        }
+
+        // ── Build peak diff trace ──────────────────────────────────────────────────────
+        function buildPeakDiff(data) {
+            const { elapsed, diffs } = data;
+
+            const colors = diffs.map(v => v === null ? '#ff4d4d' : '#00e5ff');
+            const yVals = diffs.map(v => v === null ? 0 : v);
+
+            const trace = {
+                type: 'scatter', mode: 'markers',
+                name: '|Peak1 − Peak2|',
+                x: elapsed,
+                y: yVals,
+                marker: { color: colors, size: 5, opacity: 0.9 },
+                hovertemplate: 'time: %{x:.2f}s<br>diff: %{y:.4e}<extra></extra>',
+            };
+
+            const layout = baseLayout({
+                showlegend: false,
+                xaxis: {
+                    title: { text: 'Elapsed (s)', standoff: 8 },
+                    gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
+                    tickfont: { size: 10 },
+                },
+                yaxis: {
+                    title: { text: '|I₁ − I₂|', standoff: 8 },
+                    gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
+                    tickfont: { size: 10 },
+                },
+                annotations: [{
+                    x: 1, y: 1, xref: 'paper', yref: 'paper',
+                    text: '<span style="color:#ff4d4d">●</span> no 2nd peak',
+                    showarrow: false, font: { size: 10, color: TEXT_COLOR },
+                    xanchor: 'right', yanchor: 'top',
+                }]
+            });
+
+            return { traces: [trace], layout };
+        }
+
+        // ── Build trajectory trace ─────────────────────────────────────────────────────
+        function buildTrajectory(data) {
+            const { elapsed, trajectory: t, traj_angle_L, traj_angle_R } = data;
+
+            // Robot trace — hover shows both speaker angles
+            const robotHover = elapsed.map((e, i) => {
+                const aL = traj_angle_L[i] !== null ? traj_angle_L[i].toFixed(1) + '°' : 'n/a';
+                const aR = traj_angle_R[i] !== null ? traj_angle_R[i].toFixed(1) + '°' : 'n/a';
+                return `t:${e.toFixed(2)}s<br>x:${t.robot_x[i].toFixed(3)} y:${t.robot_y[i].toFixed(3)}<br>∠SpeakerL:${aL}<br>∠SpeakerR:${aR}`;
+            });
+
+            const robotTrace = {
+                type: 'scatter', mode: 'markers',
+                name: 'Robot',
+                x: t.robot_x, y: t.robot_y,
+                text: robotHover,
+                hovertemplate: '%{text}<extra>Robot</extra>',
+                marker: {
+                    color: elapsed, colorscale: 'Viridis', size: 5, opacity: 0.85,
+                    symbol: 'circle',
+                    colorbar: { title: { text: 'Elapsed (s)', font: { size: 10 } }, thickness: 10, tickfont: { size: 9 }, x: 1.02 },
+                    showscale: true,
+                },
+            };
+
+            // Speaker L trace — hover shows angle to robot movement
+            const spkLHover = elapsed.map((e, i) => {
+                const aL = traj_angle_L[i] !== null ? traj_angle_L[i].toFixed(1) + '°' : 'n/a';
+                return `t:${e.toFixed(2)}s<br>x:${t.speakerL_x[i].toFixed(3)} y:${t.speakerL_y[i].toFixed(3)}<br>∠to robot heading:${aL}`;
+            });
+
+            const spkLTrace = {
+                type: 'scatter', mode: 'markers',
+                name: 'Speaker L',
+                x: t.speakerL_x, y: t.speakerL_y,
+                text: spkLHover,
+                hovertemplate: '%{text}<extra>Speaker L</extra>',
+                marker: { color: elapsed, colorscale: 'Plasma', size: 5, opacity: 0.85, symbol: 'diamond', showscale: false },
+            };
+
+            // Speaker R trace
+            const spkRHover = elapsed.map((e, i) => {
+                const aR = traj_angle_R[i] !== null ? traj_angle_R[i].toFixed(1) + '°' : 'n/a';
+                return `t:${e.toFixed(2)}s<br>x:${t.speakerR_x[i].toFixed(3)} y:${t.speakerR_y[i].toFixed(3)}<br>∠to robot heading:${aR}`;
+            });
+
+            const spkRTrace = {
+                type: 'scatter', mode: 'markers',
+                name: 'Speaker R',
+                x: t.speakerR_x, y: t.speakerR_y,
+                text: spkRHover,
+                hovertemplate: '%{text}<extra>Speaker R</extra>',
+                marker: { color: elapsed, colorscale: 'Cividis', size: 5, opacity: 0.85, symbol: 'square', showscale: false },
+            };
+
+            const traces = [robotTrace, spkLTrace, spkRTrace];
+
+            const layout = baseLayout({
+                margin: { t: 10, r: 60, b: 48, l: 56 },
+                xaxis: {
+                    title: { text: 'X (m)', standoff: 8 },
+                    gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
+                    tickfont: { size: 10 }, scaleanchor: 'y', scaleratio: 1,
+                },
+                yaxis: {
+                    title: { text: 'Y (m)', standoff: 8 },
+                    gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
+                    tickfont: { size: 10 },
+                },
+                legend: { x: 0, y: 1, bgcolor: 'rgba(0,0,0,0)', font: { size: 10 } },
+            });
+
+            return { traces, layout };
+        }
+
+        // ── Draw / redraw all plots ────────────────────────────────────────────────────
+        function drawAll(data) {
+            hideEmpty();
+            activeData = data;
+            selectedIdx = null;  // clear selection on data change
+
+            const hm = buildHeatmap(data);
+            const pd = buildPeakDiff(data);
+            const traj = buildTrajectory(data);
+
+            if (!plotInited) {
+                Plotly.newPlot('plot-heatmap', hm.traces, hm.layout, PLOTLY_CONFIG);
+                Plotly.newPlot('plot-peaks', pd.traces, pd.layout, PLOTLY_CONFIG);
+                Plotly.newPlot('plot-traj', traj.traces, traj.layout, PLOTLY_CONFIG);
+                attachClickHandlers();
+                plotInited = true;
+            } else {
+                Plotly.react('plot-heatmap', hm.traces, hm.layout);
+                Plotly.react('plot-peaks', pd.traces, pd.layout);
+                Plotly.react('plot-traj', traj.traces, traj.layout);
+            }
+
+            // Row count
+            document.getElementById('row-count').textContent =
+                `${data.elapsed.length} rows`;
+        }
+
+        // ── Highlight helpers ─────────────────────────────────────────────────────────
+
+        // Find the index in activeData.elapsed nearest to a given elapsed value
+        function nearestIdx(elapsedVal) {
+            const arr = activeData.elapsed;
+            let best = 0, bestDist = Infinity;
+            for (let i = 0; i < arr.length; i++) {
+                const d = Math.abs(arr[i] - elapsedVal);
+                if (d < bestDist) { bestDist = d; best = i; }
+            }
+            return best;
+        }
+
+        // Apply or clear highlight across all three plots
+        function applyHighlight(idx) {
+            if (!activeData) return;
+
+            const t = activeData.trajectory;
+            const el = activeData.elapsed;
+            const ang = activeData.angles;
+
+            if (idx === null) {
+                // Clear: remove highlight traces (indices 3+ on heatmap, 1+ on peaks, 3+ on traj)
+                Plotly.relayout('plot-heatmap', { shapes: [] });
+                // Delete highlight traces if they exist
+                const hmLen = document.getElementById('plot-heatmap')._fullData.length;
+                const pdLen = document.getElementById('plot-peaks')._fullData.length;
+                const trLen = document.getElementById('plot-traj')._fullData.length;
+                if (hmLen > 3) Plotly.deleteTraces('plot-heatmap', [3]);
+                if (pdLen > 1) Plotly.deleteTraces('plot-peaks', [1]);
+                if (trLen > 3) Plotly.deleteTraces('plot-traj', [3, 4, 5]);
+                return;
+            }
+
+            const elVal = el[idx];
+
+            // ── Heatmap: vertical shape (strip) at the selected elapsed value ──
+            // Compute half-step width for strip
+            const step = el.length > 1 ? Math.abs(el[1] - el[0]) / 2 : 0.1;
+            Plotly.relayout('plot-heatmap', {
+                shapes: [{
+                    type: 'rect',
+                    xref: 'x', yref: 'paper',
+                    x0: elVal - step, x1: elVal + step,
+                    y0: 0, y1: 1,
+                    fillcolor: 'rgba(255,255,255,0.18)',
+                    line: { color: '#ffffff', width: 1.5 },
+                }]
+            });
+
+            // ── Peak diff: single highlighted point ──
+            const diffVal = activeData.diffs[idx];
+            const yDiff = diffVal === null ? 0 : diffVal;
+            const hlDiff = {
+                type: 'scatter', mode: 'markers',
+                x: [elVal], y: [yDiff],
+                marker: {
+                    color: '#ffffff', size: 11, symbol: 'circle',
+                    line: { color: '#ffdd00', width: 2 }
+                },
+                hoverinfo: 'skip', showlegend: false,
+            };
+
+            // ── Trajectory: highlighted positions for robot + 2 speakers ──
+            const hlRobot = {
+                type: 'scatter', mode: 'markers',
+                x: [t.robot_x[idx]], y: [t.robot_y[idx]],
+                marker: {
+                    color: '#ffffff', size: 13, symbol: 'circle',
+                    line: { color: '#ffdd00', width: 2 }
+                },
+                hoverinfo: 'skip', showlegend: false,
+            };
+            const hlSpkL = {
+                type: 'scatter', mode: 'markers',
+                x: [t.speakerL_x[idx]], y: [t.speakerL_y[idx]],
+                marker: {
+                    color: '#ffffff', size: 13, symbol: 'diamond',
+                    line: { color: '#ffdd00', width: 2 }
+                },
+                hoverinfo: 'skip', showlegend: false,
+            };
+            const hlSpkR = {
+                type: 'scatter', mode: 'markers',
+                x: [t.speakerR_x[idx]], y: [t.speakerR_y[idx]],
+                marker: {
+                    color: '#ffffff', size: 13, symbol: 'square',
+                    line: { color: '#ffdd00', width: 2 }
+                },
+                hoverinfo: 'skip', showlegend: false,
+            };
+
+            // Replace or add highlight traces
+            const hmLen = document.getElementById('plot-heatmap')._fullData.length;
+            const pdLen = document.getElementById('plot-peaks')._fullData.length;
+            const trLen = document.getElementById('plot-traj')._fullData.length;
+
+            if (hmLen > 3) Plotly.deleteTraces('plot-heatmap', [3]);
+            if (pdLen > 1) Plotly.deleteTraces('plot-peaks', [1]);
+            if (trLen > 3) Plotly.deleteTraces('plot-traj', [3, 4, 5]);
+
+            Plotly.addTraces('plot-peaks', hlDiff);
+            Plotly.addTraces('plot-traj', [hlRobot, hlSpkL, hlSpkR]);
+        }
+
+        // Resolve click → nearest index → toggle or set selection
+        function handleClick(elapsedVal) {
+            if (!activeData) return;
+            const idx = nearestIdx(elapsedVal);
+
+            if (selectedIdx === idx) {
+                // Same point clicked again → deselect
+                selectedIdx = null;
+                applyHighlight(null);
+                setStatus(
+                    `${activeData.elapsed.length} rows`,
+                    'ok'
+                );
+            } else {
+                selectedIdx = idx;
+                applyHighlight(idx);
+                setStatus(
+                    `Selected t = ${activeData.elapsed[idx].toFixed(3)}s  (index ${idx})`,
+                    'ok'
+                );
+            }
+        }
+
+        // Attach Plotly click + doubleclick events (called once after first newPlot)
+        function attachClickHandlers() {
+            // Heatmap click — x coordinate is elapsed
+            document.getElementById('plot-heatmap').on('plotly_click', e => {
+                if (!e.points || !e.points.length) return;
+                handleClick(e.points[0].x);
+            });
+
+            // Peak diff click — x coordinate is elapsed
+            document.getElementById('plot-peaks').on('plotly_click', e => {
+                if (!e.points || !e.points.length) return;
+                // Ignore clicks on the highlight trace itself (index 1)
+                if (e.points[0].curveNumber > 0) return;
+                handleClick(e.points[0].x);
+            });
+
+            // Trajectory click — use marker.color which is elapsed
+            document.getElementById('plot-traj').on('plotly_click', e => {
+                if (!e.points || !e.points.length) return;
+                if (e.points[0].curveNumber >= 3) return; // ignore highlight traces
+                handleClick(e.points[0].marker.color);
+            });
+
+            // Double-click on any plot deselects (Plotly fires this on blank area click too)
+            ['plot-heatmap', 'plot-peaks', 'plot-traj'].forEach(id => {
+                document.getElementById(id).on('plotly_doubleclick', () => {
+                    selectedIdx = null;
+                    applyHighlight(null);
+                });
+            });
+        }
+
+        // ── Load run ───────────────────────────────────────────────────────────────────
+        async function loadRun(name) {
+            setStatus(`Loading ${name}…`);
+            showLoading(true);
+            document.getElementById('btn-load').disabled = true;
+            document.getElementById('spl-slider').disabled = true;
+
+            try {
+                const res = await fetch(`/api/load/${encodeURIComponent(name)}`);
+                const body = await res.json();
+
+                if (!body.ok) throw new Error(body.error);
+
+                fullData = body.data;
+
+                // Init slider
+                const slider = document.getElementById('spl-slider');
+                slider.min = fullData.spl_min;
+                slider.max = fullData.spl_max;
+                slider.step = (fullData.spl_max - fullData.spl_min) / 500;
+                slider.value = fullData.spl_min;
+                slider.disabled = false;
+                document.getElementById('spl-val').textContent = fullData.spl_min.toFixed(1) + ' dB';
+
+                drawAll(fullData);
+                setStatus(`Loaded: ${name}  ·  ${fullData.elapsed.length} timestamps  ·  ${fullData.angles.length} angle bins`, 'ok');
+            } catch (err) {
+                setStatus(`Error: ${err.message}`, 'error');
+            } finally {
+                showLoading(false);
+                document.getElementById('btn-load').disabled = false;
+            }
+        }
+
+        // ── Filter run ─────────────────────────────────────────────────────────────────
+        let filterTimer = null;
+
+        async function applyFilter(threshold) {
+            if (!fullData) return;
+            document.getElementById('spl-val').textContent = threshold.toFixed(1) + ' dB';
+
+            clearTimeout(filterTimer);
+            filterTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch('/api/filter', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            threshold,
+                            spl: fullData.spl,
+                            elapsed: fullData.elapsed,
+                            intensity_matrix: fullData.intensity_matrix,
+                            angles: fullData.angles,
+                            trajectory: fullData.trajectory,
+                            zmin: fullData.zmin,
+                            zmax: fullData.zmax,
+                        }),
+                    });
+                    const body = await res.json();
+                    if (!body.ok) throw new Error(body.error);
+
+                    drawAll({ ...body, angles: fullData.angles });
+                    setStatus(
+                        `SPL ≥ ${threshold.toFixed(1)} dB  ·  ${body.elapsed.length} / ${fullData.elapsed.length} rows`,
+                        body.elapsed.length === 0 ? 'error' : 'ok'
+                    );
+                } catch (err) {
+                    setStatus(`Filter error: ${err.message}`, 'error');
+                }
+            }, 80);   // debounce 80 ms
+        }
+
+        // ── Populate run list ──────────────────────────────────────────────────────────
+        async function refreshRuns() {
+            setStatus('Refreshing run list…');
+            try {
+                const res = await fetch('/api/runs');
+                const body = await res.json();
+                const sel = document.getElementById('run-select');
+                sel.innerHTML = '<option value="">— select a run —</option>';
+                body.runs.forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r;
+                    opt.textContent = r;
+                    sel.appendChild(opt);
+                });
+                setStatus(`${body.runs.length} run(s) available.`);
+                if (body.error) setStatus(body.error, 'error');
+            } catch (err) {
+                setStatus(`Failed to fetch runs: ${err.message}`, 'error');
+            }
+        }
+
+        // ── Event wiring ───────────────────────────────────────────────────────────────
+        document.getElementById('btn-refresh').addEventListener('click', refreshRuns);
+
+        document.getElementById('run-select').addEventListener('change', e => {
+            document.getElementById('btn-load').disabled = !e.target.value;
+        });
+
+        document.getElementById('btn-load').addEventListener('click', () => {
+            const name = document.getElementById('run-select').value;
+            if (name) loadRun(name);
+        });
+
+        document.getElementById('spl-slider').addEventListener('input', e => {
+            applyFilter(parseFloat(e.target.value));
+        });
+
+        // ── Colormap switcher ─────────────────────────────────────────────────────────
+        document.getElementById('cmap-select').addEventListener('change', e => {
+            if (!plotInited) return;
+            Plotly.restyle('plot-heatmap', { colorscale: [e.target.value] }, [0]);
+        });
+
+        // ── Init ───────────────────────────────────────────────────────────────────────
+        refreshRuns();
+    </script>
+</body>
+
+</html>

@@ -21,8 +21,8 @@ py_seed(SEED)
 NORMALIZING_FACTOR = 0.1546
 DB_SPL_THRESHOLD   = 50 # removing the threshold filter 
 N_BUMP_RUNS        = 50
-PROCESS_DATA_DIR   = "./processData"
-BUMP_RESULTS_DIR   = "./bumpResults"
+PROCESS_DATA_DIR   = "./ztLabCollection/ztProcessData"
+BUMP_RESULTS_DIR   = "./ztBumpResults"
 
 
 # ── Ring Attractor ─────────────────────────────────────────────────────────────
@@ -136,6 +136,39 @@ def extract_group_stats(spins, thetas, ring_obj):
     return group1_length, group1_angle, group2_length, group2_angle
 
 
+def angle_at_robot(robot_x, robot_y,
+                   speakerL_x, speakerL_y,
+                   speakerR_x, speakerR_y):
+    """
+    Interior angle at robot between
+    robot→speakerL and robot→speakerR.
+
+    Returns angle in degrees [0, 180].
+    """
+
+    v1 = np.array([
+        speakerL_x - robot_x,
+        speakerL_y - robot_y
+    ], dtype=float)
+
+    v2 = np.array([
+        speakerR_x - robot_x,
+        speakerR_y - robot_y
+    ], dtype=float)
+
+    n1 = np.linalg.norm(v1)
+    n2 = np.linalg.norm(v2)
+
+    if n1 == 0 or n2 == 0:
+        return np.nan
+
+    cos_theta = np.dot(v1, v2) / (n1 * n2)
+
+    # numerical safety
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+
+    return np.degrees(np.arccos(cos_theta))
+
 # ── Per-file pipeline ──────────────────────────────────────────────────────────
 def process_file(input_path, output_csv_path, output_plot_path, include_groups=False):
     filename = os.path.basename(input_path)
@@ -153,18 +186,16 @@ def process_file(input_path, output_csv_path, output_plot_path, include_groups=F
         header    = next(reader)
         
         # Find where DOA columns end (they are numeric angles from -90 to 90)
-        # Metadata columns start with "angle"
-        angle_idx = header.index("angle")
-        
-        # DOA values are between dB_SPL (index 1) and angle metadata column
-        doa_headers = header[2:angle_idx]
+        robot_x_idx = header.index("robot_x")
+
+        doa_headers = header[2:robot_x_idx]
         csv_angles = [int(float(a)) for a in doa_headers]
         
         # Indices for extra columns
-        x1_idx       = header.index("x1")
-        y1_idx       = header.index("y1")
-        x2_idx       = header.index("x2")
-        y2_idx       = header.index("y2")
+        speakerL_x_idx = header.index("speakerL_x")
+        speakerL_y_idx = header.index("speakerL_y")
+        speakerR_x_idx = header.index("speakerR_x")
+        speakerR_y_idx = header.index("speakerR_y")
         robot_x_idx  = header.index("robot_x")
         robot_y_idx  = header.index("robot_y")
         sample_idx       = header.index("sample_index")
@@ -173,11 +204,16 @@ def process_file(input_path, output_csv_path, output_plot_path, include_groups=F
         right_vol_idx    = header.index("right_volume")
 
         for row in reader:
-            db_spl = float(row[1].strip("[]"))
+            db_spl = float(
+                        str(row[1])
+                        .replace("[", "")
+                        .replace("]", "")
+                        .strip()
+                    )
             if db_spl > DB_SPL_THRESHOLD:
                 timestamp  = row[0]
                 # Extract DOA values (from index 2 to angle_idx)
-                values     = [float(x) for x in row[2:angle_idx]]
+                values     = [float(x) for x in row[2:robot_x_idx]]
                 full_array = [0.0] * 120
 
                 for angle, value in zip(csv_angles, values):
@@ -187,14 +223,29 @@ def process_file(input_path, output_csv_path, output_plot_path, include_groups=F
                         all_values.append(value)
 
                 rows_data.append((timestamp, full_array))
+                robot_x = float(row[robot_x_idx])
+                robot_y = float(row[robot_y_idx])
+
+                speakerL_x = float(row[speakerL_x_idx])
+                speakerL_y = float(row[speakerL_y_idx])
+
+                speakerR_x = float(row[speakerR_x_idx])
+                speakerR_y = float(row[speakerR_y_idx])
+
+                angle = angle_at_robot(
+                    robot_x, robot_y,
+                    speakerL_x, speakerL_y,
+                    speakerR_x, speakerR_y
+                )
+
                 extra_cols.append([
-                    float(row[angle_idx]),
-                    row[x1_idx],
-                    row[y1_idx],
-                    row[x2_idx],
-                    row[y2_idx],
-                    row[robot_x_idx],
-                    row[robot_y_idx],
+                    angle,
+                    speakerL_x,
+                    speakerL_y,
+                    speakerR_x,
+                    speakerR_y,
+                    robot_x,
+                    robot_y,
                     row[sample_idx],
                     row[time_idx],
                     row[left_vol_idx],
@@ -218,7 +269,11 @@ def process_file(input_path, output_csv_path, output_plot_path, include_groups=F
             if v == 0.0:
                 norm_arr.append(0.0)
             else:
-                norm = (v - global_min) / (global_max - global_min)
+                denom = global_max - global_min
+                if denom == 0:
+                    norm = 0.0
+                else:
+                    norm = (v - global_min) / denom
                 norm_arr.append(norm * NORMALIZING_FACTOR)
         normalized_rows.append([timestamp] + norm_arr)
 
@@ -285,9 +340,12 @@ def process_file(input_path, output_csv_path, output_plot_path, include_groups=F
     
     extra_names = [
         "angle",
-        "x1", "y1",
-        "x2", "y2",
-        "robot_x", "robot_y",
+        "speakerL_x",
+        "speakerL_y",
+        "speakerR_x",
+        "speakerR_y",
+        "robot_x",
+        "robot_y",
         "sample_index",
         "time_seconds",
         "left_volume",
@@ -415,7 +473,7 @@ def main():
 
     # Determine output subfolder and file glob
     if args.exp:
-        pattern    = os.path.join(PROCESS_DATA_DIR, f"{args.exp}_*.csv")
+        pattern    = os.path.join(PROCESS_DATA_DIR, f"{args.exp}*.csv")
         output_dir = os.path.join(BUMP_RESULTS_DIR, args.exp)
     else:
         pattern    = os.path.join(PROCESS_DATA_DIR, "*.csv")

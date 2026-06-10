@@ -2,7 +2,8 @@
 """
 bump_viewer/app.py
 ──────────────────
-Interactive bump-angle visualization server.
+Interactive bump-angle + bump-statistics visualization server.
+Two stacked Plotly charts, one dB_SPL slider controls both.
 
 Usage:
     python3 app.py --data-dir ./oldResult
@@ -10,7 +11,6 @@ Usage:
 """
 
 import argparse
-import json
 import pathlib
 import sys
 import traceback
@@ -27,55 +27,80 @@ DATA_DIR: pathlib.Path = None  # set at startup
 # Directory scanning
 # ─────────────────────────────────────────────────────────────────────────────
 
-def scan_experiments() -> dict[str, list[str]]:
-    """
-    Scan DATA_DIR for experiment folders containing *_bumps.csv files.
-
-    Returns
-    -------
-    dict mapping experiment name -> sorted list of run CSV filenames
-    """
-    result: dict[str, list[str]] = {}
-
+def scan_experiments() -> dict:
+    result = {}
     if DATA_DIR is None or not DATA_DIR.is_dir():
         return result
-
     for folder in sorted(DATA_DIR.iterdir()):
         if not folder.is_dir():
             continue
-
-        csvs = sorted(
-            p.name for p in folder.glob("*_bumps.csv")
-        )
-
+        csvs = sorted(p.name for p in folder.glob("*_bumps.csv"))
         if csvs:
             result[folder.name] = csvs
-
     return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Data helpers
+# Shared data helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def bump_columns(df: pd.DataFrame) -> list[str]:
+def bump_columns(df: pd.DataFrame) -> list:
     cols = [c for c in df.columns if c.startswith("bump") and c[4:].isdigit()]
     cols.sort(key=lambda c: int(c[4:]))
     return cols
 
 
-def build_heatmap(df: pd.DataFrame, b_cols: list[str]) -> np.ndarray:
-    """Returns ndarray shape (n_timesteps, n_angle_bins)."""
+def build_heatmap(df: pd.DataFrame, b_cols: list) -> np.ndarray:
+    """Returns ndarray shape (n_timesteps, n_angle_bins=36)."""
     bin_edges = np.arange(-180, 181, 10)
     n_bins = len(bin_edges) - 1
-    n_timesteps = len(df)
-    heatmap = np.zeros((n_timesteps, n_bins))
-
+    heatmap = np.zeros((len(df), n_bins))
     for i, (_, row) in enumerate(df[b_cols].iterrows()):
         counts, _ = np.histogram(row.dropna().values, bins=bin_edges)
         heatmap[i] = counts
-
     return heatmap
+
+
+def compute_stats(df: pd.DataFrame, b_cols: list) -> dict:
+    """
+    Per-row statistics over bump columns:
+      mean_all   — mean of all bump values
+      pos_sd     — std of positive bump values
+      neg_sd     — std of negative bump values
+      count_metric — (#positive - #negative)
+    """
+    n = len(df)
+    mean_all     = np.full(n, np.nan)
+    pos_sd       = np.full(n, np.nan)
+    neg_sd       = np.full(n, np.nan)
+    count_metric = np.full(n, np.nan)
+    bump_vals    = df[b_cols].values
+
+    for i in range(n):
+        row = bump_vals[i]
+        row = row[~np.isnan(row)]
+        if len(row) == 0:
+            continue
+        mean_all[i] = np.mean(row)
+        pos = row[row > 0]
+        neg = row[row < 0]
+        if len(pos) > 0:
+            pos_sd[i] = np.std(pos, ddof=0)
+        if len(neg) > 0:
+            neg_sd[i] = np.std(neg, ddof=0)
+        count_metric[i] = len(pos) - len(neg)
+
+    return dict(
+        mean_all=mean_all,
+        pos_sd=pos_sd,
+        neg_sd=neg_sd,
+        count_metric=count_metric,
+    )
+
+
+def _nan_to_none(arr: np.ndarray) -> list:
+    """Convert numpy array to list, replacing NaN with None for JSON."""
+    return [None if np.isnan(v) else float(v) for v in arr]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -90,72 +115,56 @@ def index():
 @app.route("/api/experiments")
 def api_experiments():
     try:
-        data = scan_experiments()
-        return jsonify({"ok": True, "experiments": data})
+        return jsonify({"ok": True, "experiments": scan_experiments()})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
 
 @app.route("/api/load")
 def api_load():
-    """
-    Load a CSV and return:
-      - db_min, db_max
-      - x-axis length (full unfiltered)
-    """
+    """Return db range for slider setup."""
     experiment = request.args.get("experiment", "")
-    run = request.args.get("run", "")
-
+    run        = request.args.get("run", "")
     if not experiment or not run:
         return jsonify({"ok": False, "error": "experiment and run required"})
 
     csv_path = DATA_DIR / experiment / run
-
     try:
         df = pd.read_csv(csv_path)
-
         required = {"dB_SPL", "angle", "left_volume", "right_volume"}
-        missing = required - set(df.columns)
+        missing  = required - set(df.columns)
         if missing:
             return jsonify({"ok": False, "error": f"Missing columns: {missing}"})
-
         b_cols = bump_columns(df)
         if not b_cols:
             return jsonify({"ok": False, "error": "No bump columns found in CSV"})
-
         return jsonify({
             "ok": True,
-            "db_min": float(df["dB_SPL"].min()),
-            "db_max": float(df["dB_SPL"].max()),
+            "db_min":  float(df["dB_SPL"].min()),
+            "db_max":  float(df["dB_SPL"].max()),
             "n_total": len(df),
             "n_bumps": len(b_cols),
         })
-
     except FileNotFoundError:
         return jsonify({"ok": False, "error": f"File not found: {csv_path}"})
-    except Exception as e:
+    except Exception:
         return jsonify({"ok": False, "error": traceback.format_exc()})
 
 
 @app.route("/api/plot")
 def api_plot():
-    """
-    Filter CSV by dB_SPL threshold and return Plotly-ready JSON traces.
-    """
+    """Bump-angle view: volume + heatmap + angle panels."""
     experiment = request.args.get("experiment", "")
-    run = request.args.get("run", "")
-    threshold = request.args.get("threshold", type=float, default=None)
-
+    run        = request.args.get("run", "")
+    threshold  = request.args.get("threshold", type=float, default=None)
     if not experiment or not run:
         return jsonify({"ok": False, "error": "experiment and run required"})
 
     csv_path = DATA_DIR / experiment / run
-
     try:
         df = pd.read_csv(csv_path)
-
         required = {"dB_SPL", "angle", "left_volume", "right_volume"}
-        missing = required - set(df.columns)
+        missing  = required - set(df.columns)
         if missing:
             return jsonify({"ok": False, "error": f"Missing columns: {missing}"})
 
@@ -165,94 +174,77 @@ def api_plot():
 
         db_min = float(df["dB_SPL"].min())
         db_max = float(df["dB_SPL"].max())
-
         if threshold is None:
             threshold = db_min
 
         df_f = df[df["dB_SPL"] >= threshold].reset_index(drop=True)
-        n = len(df_f)
+        n    = len(df_f)
 
         if n == 0:
             return jsonify({"ok": True, "empty": True, "threshold": threshold})
 
         xs = list(range(n))
 
-        # ── Panel 1: volume ────────────────────────────────────────────────
-        left_vol = (df_f["left_volume"] + 0.45).tolist()
-        right_vol = df_f["right_volume"].tolist()
-
+        # ── Volume traces ──────────────────────────────────────────────────
         vol_traces = [
             {
-                "x": xs, "y": left_vol,
+                "x": xs, "y": (df_f["left_volume"] + 0.45).tolist(),
                 "type": "scatter", "mode": "lines",
                 "name": "left_volume (+0.45)",
                 "line": {"color": "#e53935", "width": 1.2},
             },
             {
-                "x": xs, "y": right_vol,
+                "x": xs, "y": df_f["right_volume"].tolist(),
                 "type": "scatter", "mode": "lines",
                 "name": "right_volume",
                 "line": {"color": "#43a047", "width": 1.2},
             },
         ]
 
-        # ── Panel 2: heatmap ───────────────────────────────────────────────
-        heatmap = build_heatmap(df_f, b_cols)  # (n_timesteps, 36)
+        # ── Heatmap trace ──────────────────────────────────────────────────
+        heatmap      = build_heatmap(df_f, b_cols)
+        heatmap_full = build_heatmap(df,   b_cols)
+        z_max        = float(heatmap_full.max()) if heatmap_full.max() > 0 else 1.0
+        bin_centers  = list(range(-175, 180, 10))
 
-        # z for Plotly heatmap: rows = angle bins, cols = time
-        z = heatmap.T.tolist()  # shape (36, n)
+        heat_traces = [{
+            "type": "heatmap",
+            "x": xs,
+            "y": bin_centers,
+            "z": heatmap.T.tolist(),
+            "colorscale": "Viridis",
+            "zmin": 0,
+            "zmax": z_max,
+            "showscale": True,
+            "colorbar": {"title": "Count", "thickness": 12, "len": 0.6,
+                         "y": 0.72, "yanchor": "bottom"},
+        }]
 
-        bin_centers = list(range(-175, 180, 10))  # 36 values
-
-        # Fixed colorscale range uses full (unfiltered) data
-        df_full_heat = build_heatmap(df, b_cols)
-        z_max = float(df_full_heat.max()) if df_full_heat.max() > 0 else 1.0
-
-        heat_traces = [
-            {
-                "type": "heatmap",
-                "x": xs,
-                "y": bin_centers,
-                "z": z,
-                "colorscale": "Viridis",
-                "zmin": 0,
-                "zmax": z_max,
-                "showscale": True,
-                "colorbar": {"title": "Count", "thickness": 14, "len": 0.9},
-            }
-        ]
-
-        # ── Panel 3: angle ────────────────────────────────────────────────
+        # ── Angle trace ────────────────────────────────────────────────────
         angles = df_f["angle"].tolist()
+        angle_traces = [{
+            "x": xs, "y": angles,
+            "type": "scatter", "mode": "lines",
+            "name": "angle",
+            "line": {"color": "#2196f3", "width": 1.2},
+            "showlegend": False,
+        }]
 
-        angle_traces = [
-            {
-                "x": xs, "y": angles,
-                "type": "scatter", "mode": "lines",
-                "name": "angle",
-                "line": {"color": "#2196f3", "width": 1.2},
-                "showlegend": False,
-            }
-        ]
-
-        # First angle > 90°
-        over90_idx = next(
-            (i for i, a in enumerate(angles) if a > 90), None
-        )
-
-        shapes = []
+        # First angle > 90° marker
+        over90_idx = next((i for i, a in enumerate(angles) if a > 90), None)
+        shapes      = []
         annotations = []
         if over90_idx is not None:
             shapes.append({
                 "type": "line",
                 "xref": "x3", "yref": "paper",
                 "x0": over90_idx, "x1": over90_idx,
-                "y0": 0, "y1": 0.28,   # panel 3 occupies bottom ~28%
+                "y0": 0.515, "y1": 0.575,
                 "line": {"color": "red", "dash": "dot", "width": 1.5},
             })
             annotations.append({
                 "xref": "x3", "yref": "paper",
-                "x": over90_idx, "y": 0.29,
+                "x": over90_idx, "y": 0.578,
                 "text": f"first >90° (i={over90_idx})",
                 "showarrow": False,
                 "font": {"size": 9, "color": "red"},
@@ -260,18 +252,105 @@ def api_plot():
             })
 
         return jsonify({
-            "ok": True,
-            "empty": False,
+            "ok": True, "empty": False,
             "n": n,
-            "db_min": db_min,
-            "db_max": db_max,
+            "db_min": db_min, "db_max": db_max,
             "threshold": threshold,
-            "vol_traces": vol_traces,
-            "heat_traces": heat_traces,
+            "vol_traces":   vol_traces,
+            "heat_traces":  heat_traces,
             "angle_traces": angle_traces,
-            "shapes": shapes,
-            "annotations": annotations,
-            "z_max": z_max,
+            "shapes":       shapes,
+            "annotations":  annotations,
+            "z_max":        z_max,
+        })
+
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": f"File not found: {csv_path}"})
+    except Exception:
+        return jsonify({"ok": False, "error": traceback.format_exc()})
+
+
+@app.route("/api/plot_stats")
+def api_plot_stats():
+    """Stats view: mean + std-dev + count-metric panels."""
+    experiment = request.args.get("experiment", "")
+    run        = request.args.get("run", "")
+    threshold  = request.args.get("threshold", type=float, default=None)
+    if not experiment or not run:
+        return jsonify({"ok": False, "error": "experiment and run required"})
+
+    csv_path = DATA_DIR / experiment / run
+    try:
+        df = pd.read_csv(csv_path)
+        if "dB_SPL" not in df.columns:
+            return jsonify({"ok": False, "error": "Missing column: dB_SPL"})
+
+        b_cols = bump_columns(df)
+        if not b_cols:
+            return jsonify({"ok": False, "error": "No bump columns found"})
+
+        db_min = float(df["dB_SPL"].min())
+        if threshold is None:
+            threshold = db_min
+
+        df_f = df[df["dB_SPL"] >= threshold].reset_index(drop=True)
+        n    = len(df_f)
+
+        if n == 0:
+            return jsonify({"ok": True, "empty": True, "threshold": threshold})
+
+        xs    = list(range(n))
+        stats = compute_stats(df_f, b_cols)
+
+        # ── Mean trace ─────────────────────────────────────────────────────
+        mean_traces = [{
+            "x": xs, "y": _nan_to_none(stats["mean_all"]),
+            "type": "scatter", "mode": "lines",
+            "name": "mean",
+            "line": {"color": "#c9d1e0", "width": 1.4},
+        }]
+
+        # ── Std-dev traces ─────────────────────────────────────────────────
+        sd_traces = [
+            {
+                "x": xs, "y": _nan_to_none(stats["pos_sd"]),
+                "type": "scatter", "mode": "lines",
+                "name": "positive SD",
+                "line": {"color": "#f59e0b", "width": 1.0},
+            },
+            {
+                "x": xs, "y": _nan_to_none(stats["neg_sd"]),
+                "type": "scatter", "mode": "lines",
+                "name": "negative SD",
+                "line": {"color": "#60a5fa", "width": 1.0},
+            },
+        ]
+
+        # ── Count metric trace + zero-line ─────────────────────────────────
+        count_traces = [
+            {
+                "x": xs, "y": _nan_to_none(stats["count_metric"]),
+                "type": "scatter", "mode": "lines",
+                "name": "pos − neg count",
+                "line": {"color": "#a78bfa", "width": 1.4},
+            },
+            {
+                # zero reference line rendered as a scatter trace
+                "x": [0, n - 1], "y": [0, 0],
+                "type": "scatter", "mode": "lines",
+                "name": "zero",
+                "line": {"color": "#4ade80", "width": 1.0, "dash": "solid"},
+                "showlegend": False,
+            },
+        ]
+
+        return jsonify({
+            "ok": True, "empty": False,
+            "n": n,
+            "threshold": threshold,
+            "mean_traces":  mean_traces,
+            "sd_traces":    sd_traces,
+            "count_traces": count_traces,
         })
 
     except FileNotFoundError:
@@ -281,7 +360,7 @@ def api_plot():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HTML Template (single-page app)
+# HTML Template
 # ─────────────────────────────────────────────────────────────────────────────
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
@@ -295,17 +374,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:        #0c0e14;
-    --surface:   #13161f;
-    --surface2:  #1a1e2b;
-    --border:    #252a3a;
-    --accent:    #4a90d9;
-    --accent2:   #e53935;
-    --accent3:   #43a047;
-    --text:      #d8dde8;
-    --text-dim:  #626880;
-    --mono:      'JetBrains Mono', monospace;
-    --display:   'Syne', sans-serif;
+    --bg:       #0c0e14;
+    --surface:  #13161f;
+    --surface2: #1a1e2b;
+    --border:   #252a3a;
+    --accent:   #4a90d9;
+    --red:      #e53935;
+    --green:    #43a047;
+    --text:     #d8dde8;
+    --dim:      #626880;
+    --mono:     'JetBrains Mono', monospace;
+    --display:  'Syne', sans-serif;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -320,51 +399,43 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     flex-direction: column;
   }
 
-  /* ── Header ── */
+  /* ── Header ───────────────────────────────────────── */
   header {
-    padding: 18px 28px 14px;
+    padding: 16px 28px 12px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: baseline;
     gap: 16px;
     background: var(--surface);
   }
-
   header h1 {
     font-family: var(--display);
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 800;
     letter-spacing: -0.5px;
     color: #fff;
   }
-
   header .sub {
-    font-size: 11px;
-    color: var(--text-dim);
+    font-size: 10px;
+    color: var(--dim);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
-  /* ── Control bar ── */
+  /* ── Controls ─────────────────────────────────────── */
   .controls {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 14px 28px;
+    padding: 12px 28px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
   }
-
-  .ctrl-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
+  .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
   .ctrl-label {
     font-size: 10px;
-    color: var(--text-dim);
+    color: var(--dim);
     text-transform: uppercase;
     letter-spacing: 0.1em;
   }
@@ -375,7 +446,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     color: var(--text);
     font-family: var(--mono);
     font-size: 12px;
-    padding: 6px 10px;
+    padding: 6px 28px 6px 10px;
     border-radius: 4px;
     min-width: 160px;
     cursor: pointer;
@@ -384,52 +455,40 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23626880'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 10px center;
-    padding-right: 28px;
     transition: border-color 0.15s;
   }
+  select:hover, select:focus { border-color: var(--accent); }
 
-  select:hover, select:focus {
-    border-color: var(--accent);
-  }
-
-  /* ── Slider section ── */
+  /* ── Slider ───────────────────────────────────────── */
   .slider-wrap {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
     flex: 1;
-    min-width: 240px;
+    min-width: 260px;
   }
-
-  .slider-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
+  .slider-row { display: flex; align-items: center; gap: 12px; }
   input[type=range] {
     flex: 1;
     accent-color: var(--accent);
     height: 4px;
     cursor: pointer;
   }
-
   .slider-val {
     font-size: 12px;
     color: var(--accent);
-    min-width: 80px;
+    min-width: 84px;
     text-align: right;
     font-weight: 600;
   }
-
   .slider-range {
     display: flex;
     justify-content: space-between;
     font-size: 10px;
-    color: var(--text-dim);
+    color: var(--dim);
   }
 
-  /* ── Status badge ── */
+  /* ── Status ───────────────────────────────────────── */
   .status {
     margin-left: auto;
     font-size: 11px;
@@ -437,104 +496,108 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     border-radius: 4px;
     background: var(--surface2);
     border: 1px solid var(--border);
-    color: var(--text-dim);
+    color: var(--dim);
     white-space: nowrap;
   }
+  .status.ok   { color: #4ade80; border-color: #4ade80; }
+  .status.err  { color: var(--red); border-color: var(--red); }
+  .status.warn { color: #f9a825; border-color: #f9a825; }
+  .status.busy { color: var(--accent); border-color: var(--accent); }
 
-  .status.ok   { color: var(--accent3); border-color: var(--accent3); }
-  .status.err  { color: var(--accent2); border-color: var(--accent2); }
-  .status.warn { color: #f9a825;        border-color: #f9a825; }
-
-  /* ── Main plot area ── */
+  /* ── Main layout ──────────────────────────────────── */
   main {
     flex: 1;
-    padding: 20px 28px;
+    padding: 16px 28px 20px;
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 12px;
   }
 
-  #plot {
-    width: 100%;
-    height: calc(100vh - 180px);
-    min-height: 560px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface);
-    overflow: hidden;
-  }
-
-  /* ── Error overlay ── */
+  /* ── Error box ────────────────────────────────────── */
   #error-box {
     display: none;
     background: #1a0d0d;
     border: 1px solid #7b1a1a;
     border-radius: 6px;
-    padding: 18px 22px;
-    margin-bottom: 16px;
+    padding: 14px 18px;
     color: #ff8a80;
     font-size: 12px;
     white-space: pre-wrap;
     word-break: break-all;
-    max-height: 200px;
+    max-height: 180px;
     overflow-y: auto;
   }
-
   #error-box.visible { display: block; }
-
   #error-box .err-title {
     font-family: var(--display);
     font-weight: 700;
     font-size: 13px;
     color: #ff5252;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
-  /* ── Empty state ── */
-  #empty-msg {
-    display: none;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    color: var(--text-dim);
+  /* ── Plot containers ──────────────────────────────── */
+  .plot-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
+  .plot-label {
+    font-size: 10px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding-left: 2px;
+  }
+  .plot-box {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    overflow: hidden;
+    position: relative;
+  }
+  #plot-bump  { height: calc(52vh - 80px); min-height: 320px; }
+  #plot-stats { height: calc(44vh - 60px); min-height: 270px; }
 
-  #empty-msg.visible { display: block; }
-
-  #plot-wrap { position: relative; flex: 1; }
-
-  /* ── Loading spinner ── */
-  #spinner {
+  /* ── Spinner (shared, shows over whichever is loading) ── */
+  .spinner-overlay {
     display: none;
     position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 28px; height: 28px;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    background: rgba(12,14,20,0.5);
+    z-index: 10;
+    border-radius: 6px;
+  }
+  .spinner-overlay.visible { display: flex; }
+  .spin-ring {
+    width: 26px; height: 26px;
     border: 3px solid var(--border);
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
-    z-index: 10;
   }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  #spinner.visible { display: block; }
-
-  @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
-
-  /* ── Hint text ── */
-  #hint {
+  /* ── Hint ─────────────────────────────────────────── */
+  .hint-msg {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: var(--text-dim);
+    color: var(--dim);
     font-size: 13px;
-    gap: 8px;
   }
 </style>
 </head>
 <body>
+
+<header>
+  <h1>Bump Angle Viewer</h1>
+  <span class="sub">bump plots + statistics · single dB_SPL threshold</span>
+</header>
 
 <div class="controls">
   <div class="ctrl-group">
@@ -575,10 +638,21 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div id="error-text"></div>
   </div>
 
-  <div id="plot-wrap">
-    <div id="spinner"></div>
-    <div id="plot">
-      <div id="hint">← Select an experiment and run to begin</div>
+  <!-- Bump plot (top) -->
+  <div class="plot-section">
+    <span class="plot-label">Bump view — volume · heatmap · angle</span>
+    <div class="plot-box" id="bump-wrap">
+      <div class="spinner-overlay" id="spin-bump"><div class="spin-ring"></div></div>
+      <div id="plot-bump"><div class="hint-msg">← Select an experiment and run to begin</div></div>
+    </div>
+  </div>
+
+  <!-- Stats plot (bottom) -->
+  <div class="plot-section">
+    <span class="plot-label">Statistics view — mean · std dev · count metric</span>
+    <div class="plot-box" id="stats-wrap">
+      <div class="spinner-overlay" id="spin-stats"><div class="spin-ring"></div></div>
+      <div id="plot-stats"><div class="hint-msg">↑ Stats will appear here</div></div>
     </div>
   </div>
 </main>
@@ -587,34 +661,33 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 // ─────────────────────────────────────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────────────────────────────────────
-let experiments = {};
+let experiments     = {};
 let dbMin = 0, dbMax = 1;
-let plotInitialised = false;
-let sliderDebounce = null;
+let bumpInitialised  = false;
+let statsInitialised = false;
+let sliderDebounce   = null;
 let currentExp = "", currentRun = "";
-let zMax = 1;  // fixed colorscale across slider moves
+let zMaxFixed  = 1;   // heatmap colorscale locked on first load
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Init
+// Startup
 // ─────────────────────────────────────────────────────────────────────────────
 async function init() {
-  setStatus("scanning…", "");
+  setStatus("scanning…", "busy");
   try {
-    const res = await fetch("/api/experiments");
+    const res  = await fetch("/api/experiments");
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
 
     experiments = data.experiments;
-    const sel = document.getElementById("sel-exp");
+    const sel   = document.getElementById("sel-exp");
     sel.innerHTML = '<option value="">— choose —</option>';
-
     for (const exp of Object.keys(experiments).sort()) {
       const opt = document.createElement("option");
       opt.value = exp;
       opt.textContent = exp;
       sel.appendChild(opt);
     }
-
     setStatus("ready", "");
   } catch (e) {
     showError("Failed to scan experiments:\n" + e.message);
@@ -626,25 +699,18 @@ async function init() {
 // Dropdown handlers
 // ─────────────────────────────────────────────────────────────────────────────
 function onExpChange() {
-  const exp = document.getElementById("sel-exp").value;
+  const exp    = document.getElementById("sel-exp").value;
   const runSel = document.getElementById("sel-run");
   runSel.innerHTML = '<option value="">— choose run —</option>';
 
-  if (!exp) {
-    runSel.disabled = true;
-    disableSlider();
-    return;
-  }
+  if (!exp) { runSel.disabled = true; disableSlider(); return; }
 
-  const runs = experiments[exp] || [];
-  for (const r of runs) {
+  for (const r of (experiments[exp] || [])) {
     const opt = document.createElement("option");
     opt.value = r;
-    // Show a friendlier label: strip _bumps.csv suffix
     opt.textContent = r.replace("_bumps.csv", "");
     runSel.appendChild(opt);
   }
-
   runSel.disabled = false;
   disableSlider();
   hideError();
@@ -658,30 +724,30 @@ async function onRunChange() {
   currentExp = exp;
   currentRun = run;
 
-  setStatus("loading…", "");
-  showSpinner(true);
+  setStatus("loading…", "busy");
+  showSpinner("bump",  true);
+  showSpinner("stats", true);
   hideError();
   disableSlider();
 
   try {
-    const res = await fetch(`/api/load?experiment=${encodeURIComponent(exp)}&run=${encodeURIComponent(run)}`);
+    const res  = await fetch(`/api/load?experiment=${enc(exp)}&run=${enc(run)}`);
     const data = await res.json();
-
     if (!data.ok) throw new Error(data.error);
 
-    dbMin = data.db_min;
-    dbMax = data.db_max;
-    zMax  = null;  // will be set from first plot call
+    dbMin   = data.db_min;
+    dbMax   = data.db_max;
+    zMaxFixed = null;   // will lock on first plot response
 
     setupSlider(dbMin, dbMax);
     enableSlider();
 
-    // Trigger first plot at db_min
-    await fetchAndPlot(dbMin, true);
+    await fetchBoth(dbMin, true);
   } catch (e) {
     showError(e.message);
     setStatus("error", "err");
-    showSpinner(false);
+    showSpinner("bump",  false);
+    showSpinner("stats", false);
   }
 }
 
@@ -689,165 +755,234 @@ async function onRunChange() {
 // Slider
 // ─────────────────────────────────────────────────────────────────────────────
 function setupSlider(min, max) {
-  const slider = document.getElementById("db-slider");
-  const steps = 200;
-  slider.min = min;
-  slider.max = max;
-  slider.step = (max !== min) ? (max - min) / steps : 0.1;
-  slider.value = min;
-  document.getElementById("slider-val").textContent = min.toFixed(2) + " dB";
-  document.getElementById("range-min").textContent = min.toFixed(1);
-  document.getElementById("range-max").textContent = max.toFixed(1);
+  const s = document.getElementById("db-slider");
+  s.min   = min;
+  s.max   = max;
+  s.step  = (max !== min) ? (max - min) / 200 : 0.1;
+  s.value = min;
+  document.getElementById("slider-val").textContent  = min.toFixed(2) + " dB";
+  document.getElementById("range-min").textContent   = min.toFixed(1);
+  document.getElementById("range-max").textContent   = max.toFixed(1);
 }
 
-function enableSlider() {
+function enableSlider()  {
   const w = document.getElementById("slider-wrap");
-  w.style.opacity = "1";
-  w.style.pointerEvents = "auto";
+  w.style.opacity = "1"; w.style.pointerEvents = "auto";
 }
-
 function disableSlider() {
   const w = document.getElementById("slider-wrap");
-  w.style.opacity = "0.35";
-  w.style.pointerEvents = "none";
+  w.style.opacity = "0.35"; w.style.pointerEvents = "none";
 }
 
 function onSliderInput() {
   const val = parseFloat(document.getElementById("db-slider").value);
   document.getElementById("slider-val").textContent = val.toFixed(2) + " dB";
-  // Debounce — only fire plot 150 ms after user stops dragging
   clearTimeout(sliderDebounce);
-  sliderDebounce = setTimeout(() => fetchAndPlot(val, false), 150);
+  sliderDebounce = setTimeout(() => fetchBoth(val, false), 150);
 }
-
 function onSliderCommit() {
   clearTimeout(sliderDebounce);
-  const val = parseFloat(document.getElementById("db-slider").value);
-  fetchAndPlot(val, false);
+  fetchBoth(parseFloat(document.getElementById("db-slider").value), false);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Plot fetch + render
+// Fetch both plots in parallel
 // ─────────────────────────────────────────────────────────────────────────────
-async function fetchAndPlot(threshold, firstLoad) {
-  showSpinner(true);
-  setStatus("plotting…", "");
+async function fetchBoth(threshold, firstLoad) {
+  showSpinner("bump",  true);
+  showSpinner("stats", true);
+  setStatus("plotting…", "busy");
 
-  try {
-    const url = `/api/plot?experiment=${encodeURIComponent(currentExp)}&run=${encodeURIComponent(currentRun)}&threshold=${threshold}`;
-    const res  = await fetch(url);
-    const data = await res.json();
+  const [bumpResult, statsResult] = await Promise.allSettled([
+    fetchBump(threshold, firstLoad),
+    fetchStats(threshold),
+  ]);
 
-    showSpinner(false);
+  showSpinner("bump",  false);
+  showSpinner("stats", false);
 
-    if (!data.ok) throw new Error(data.error);
+  const bumpOk  = bumpResult.status  === "fulfilled" && bumpResult.value  === true;
+  const statsOk = statsResult.status === "fulfilled" && statsResult.value === true;
 
-    if (data.empty) {
-      setStatus("0 rows match threshold", "warn");
-      renderEmpty();
-      return;
-    }
-
-    // Store zMax from first load so colorscale stays fixed
-    if (firstLoad) zMax = data.z_max;
-
-    // Clamp zMax into heatmap trace
-    data.heat_traces[0].zmax = zMax;
-
-    renderPlot(data);
-    setStatus(`n = ${data.n} rows  |  threshold = ${threshold.toFixed(2)} dB`, "ok");
-
-  } catch (e) {
-    showSpinner(false);
-    showError(e.message);
+  const val = parseFloat(document.getElementById("db-slider").value);
+  if (bumpOk && statsOk) {
+    setStatus(`n rows · threshold = ${val.toFixed(2)} dB`, "ok");
+  } else if (bumpOk || statsOk) {
+    setStatus("partial error — see above", "warn");
+  } else {
     setStatus("error", "err");
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Plotly rendering
+// Fetch + render: bump plot
 // ─────────────────────────────────────────────────────────────────────────────
-const PLOTLY_LAYOUT_BASE = {
-  paper_bgcolor: "#13161f",
-  plot_bgcolor:  "#0c0e14",
-  font: { family: "JetBrains Mono, monospace", size: 11, color: "#d8dde8" },
-  margin: { l: 60, r: 20, t: 36, b: 40 },
-  showlegend: true,
-  legend: { x: 1.01, y: 1, font: { size: 10 }, bgcolor: "rgba(0,0,0,0)" },
-  grid: { rows: 3, columns: 1, pattern: "independent", roworder: "top to bottom" },
-};
+async function fetchBump(threshold, firstLoad) {
+  try {
+    const url  = `/api/plot?experiment=${enc(currentExp)}&run=${enc(currentRun)}&threshold=${threshold}`;
+    const res  = await fetch(url);
+    const data = await res.json();
 
-function renderPlot(data) {
-  const hint = document.getElementById("hint");
-  if (hint) hint.remove();
+    if (!data.ok) { showError("Bump plot: " + data.error); return false; }
 
-  const volTraces   = data.vol_traces.map(t => ({ ...t, xaxis: "x",  yaxis: "y"  }));
-  const heatTraces  = data.heat_traces.map(t => ({ ...t, xaxis: "x2", yaxis: "y2" }));
-  const angleTraces = data.angle_traces.map(t => ({ ...t, xaxis: "x3", yaxis: "y3" }));
+    if (data.empty) { renderBumpEmpty(); return true; }
 
-  const allTraces = [...volTraces, ...heatTraces, ...angleTraces];
+    if (firstLoad || zMaxFixed === null) zMaxFixed = data.z_max;
+    data.heat_traces[0].zmax = zMaxFixed;
 
-  const layout = {
-    ...PLOTLY_LAYOUT_BASE,
-    title: {
-      text: `${currentRun.replace("_bumps.csv","")}  ·  threshold ≥ ${parseFloat(document.getElementById("db-slider").value).toFixed(2)} dB_SPL`,
-      font: { family: "Syne, sans-serif", size: 14, color: "#ffffff" },
-      x: 0.04,
-    },
-
-    // Row sizing
-    xaxis:  { domain: [0, 1], anchor: "y",  showticklabels: false, gridcolor: "#1e2333", zeroline: false },
-    yaxis:  { domain: [0.72, 1.0], anchor: "x", title: { text: "Volume", font:{size:11} }, range:[0.5,1.5], gridcolor: "#1e2333", zeroline: false },
-
-    xaxis2: { domain: [0, 1], anchor: "y2", showticklabels: false, gridcolor: "#1e2333", zeroline: false },
-    yaxis2: { domain: [0.28, 0.70], anchor: "x2", title: { text: "Angle bin (°)", font:{size:11} }, gridcolor: "#1e2333", zeroline: false },
-
-    xaxis3: { domain: [0, 1], anchor: "y3", title: { text: "Timestamp index", font:{size:11} }, gridcolor: "#1e2333", zeroline: false },
-    yaxis3: { domain: [0.00, 0.26], anchor: "x3", title: { text: "Angle (°)", font:{size:11} }, gridcolor: "#1e2333", zeroline: false },
-
-    shapes: data.shapes,
-    annotations: data.annotations,
-  };
-
-  const config = {
-    responsive: true,
-    displayModeBar: true,
-    modeBarButtonsToRemove: ["select2d", "lasso2d"],
-    displaylogo: false,
-    toImageButtonOptions: { filename: currentRun.replace(".csv",""), scale: 2 },
-  };
-
-  if (!plotInitialised) {
-    Plotly.newPlot("plot", allTraces, layout, config);
-    plotInitialised = true;
-  } else {
-    Plotly.react("plot", allTraces, layout, config);
+    renderBump(data, threshold);
+    return true;
+  } catch (e) {
+    showError("Bump fetch error: " + e.message);
+    return false;
   }
 }
 
-function renderEmpty() {
-  const emptyLayout = {
-    ...PLOTLY_LAYOUT_BASE,
-    annotations: [{
-      text: "No data matches the current threshold",
-      xref: "paper", yref: "paper",
-      x: 0.5, y: 0.5,
-      showarrow: false,
-      font: { size: 16, color: "#626880" },
-    }],
+// ─────────────────────────────────────────────────────────────────────────────
+// Fetch + render: stats plot
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchStats(threshold) {
+  try {
+    const url  = `/api/plot_stats?experiment=${enc(currentExp)}&run=${enc(currentRun)}&threshold=${threshold}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (!data.ok) { showError("Stats plot: " + data.error); return false; }
+
+    if (data.empty) { renderStatsEmpty(); return true; }
+
+    renderStats(data, threshold);
+    return true;
+  } catch (e) {
+    showError("Stats fetch error: " + e.message);
+    return false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Plotly: bump chart (3 sub-panels)
+// ─────────────────────────────────────────────────────────────────────────────
+const BASE_LAYOUT = {
+  paper_bgcolor: "#13161f",
+  plot_bgcolor:  "#0c0e14",
+  font: { family: "JetBrains Mono, monospace", size: 11, color: "#d8dde8" },
+  margin: { l: 62, r: 24, t: 36, b: 42 },
+};
+
+const CFG = {
+  responsive: true,
+  displayModeBar: true,
+  modeBarButtonsToRemove: ["select2d", "lasso2d"],
+  displaylogo: false,
+  toImageButtonOptions: { scale: 2 },
+};
+
+function renderBump(data, threshold) {
+  removeHint("plot-bump");
+
+  const vol   = data.vol_traces.map(t   => ({ ...t, xaxis:"x",  yaxis:"y"  }));
+  const heat  = data.heat_traces.map(t  => ({ ...t, xaxis:"x2", yaxis:"y2" }));
+  const angle = data.angle_traces.map(t => ({ ...t, xaxis:"x3", yaxis:"y3" }));
+
+  const layout = {
+    ...BASE_LAYOUT,
+    title: {
+      text: `${currentRun.replace("_bumps.csv","")}  ·  threshold ≥ ${threshold.toFixed(2)} dB_SPL  ·  n = ${data.n}`,
+      font: { family:"Syne, sans-serif", size:13, color:"#ffffff" },
+      x: 0.04,
+    },
+    showlegend: true,
+    legend: { x:1.01, y:0.98, font:{size:10}, bgcolor:"rgba(0,0,0,0)" },
+
+    xaxis:  { domain:[0,1], anchor:"y",  showticklabels:false, gridcolor:"#1e2333", zeroline:false },
+    yaxis:  { domain:[0.72,1.0], anchor:"x",  title:{text:"Volume",font:{size:10}}, range:[0.5,1.5], gridcolor:"#1e2333", zeroline:false },
+
+    xaxis2: { domain:[0,1], anchor:"y2", showticklabels:false, gridcolor:"#1e2333", zeroline:false },
+    yaxis2: { domain:[0.27,0.68], anchor:"x2", title:{text:"Angle bin (°)",font:{size:10}}, gridcolor:"#1e2333", zeroline:false },
+
+    xaxis3: { domain:[0,1], anchor:"y3", title:{text:"Timestamp index",font:{size:10}}, gridcolor:"#1e2333", zeroline:false },
+    yaxis3: { domain:[0.0,0.24],  anchor:"x3", title:{text:"Angle (°)",font:{size:10}}, gridcolor:"#1e2333", zeroline:false },
+
+    shapes:      data.shapes,
+    annotations: data.annotations,
   };
 
-  if (!plotInitialised) {
-    Plotly.newPlot("plot", [], emptyLayout, { responsive: true, displaylogo: false });
-    plotInitialised = true;
+  if (!bumpInitialised) {
+    Plotly.newPlot("plot-bump", [...vol,...heat,...angle], layout, CFG);
+    bumpInitialised = true;
   } else {
-    Plotly.react("plot", [], emptyLayout);
+    Plotly.react("plot-bump", [...vol,...heat,...angle], layout);
   }
+}
+
+function renderBumpEmpty() {
+  removeHint("plot-bump");
+  const layout = { ...BASE_LAYOUT,
+    annotations:[{ text:"No data matches threshold", xref:"paper", yref:"paper",
+      x:0.5, y:0.5, showarrow:false, font:{size:15,color:"#626880"} }]
+  };
+  if (!bumpInitialised) { Plotly.newPlot("plot-bump",[],layout,CFG); bumpInitialised=true; }
+  else                  { Plotly.react("plot-bump",[],layout); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Plotly: stats chart (3 sub-panels)
+// ─────────────────────────────────────────────────────────────────────────────
+function renderStats(data, threshold) {
+  removeHint("plot-stats");
+
+  const mean  = data.mean_traces.map(t  => ({ ...t, xaxis:"x",  yaxis:"y"  }));
+  const sd    = data.sd_traces.map(t    => ({ ...t, xaxis:"x2", yaxis:"y2" }));
+  const count = data.count_traces.map(t => ({ ...t, xaxis:"x3", yaxis:"y3" }));
+
+  const layout = {
+    ...BASE_LAYOUT,
+    title: {
+      text: `Statistics  ·  threshold ≥ ${threshold.toFixed(2)} dB_SPL  ·  n = ${data.n}`,
+      font: { family:"Syne, sans-serif", size:13, color:"#ffffff" },
+      x: 0.04,
+    },
+    showlegend: true,
+    legend: { x:1.01, y:0.98, font:{size:10}, bgcolor:"rgba(0,0,0,0)" },
+
+    xaxis:  { domain:[0,1], anchor:"y",  showticklabels:false, gridcolor:"#1e2333", zeroline:false },
+    yaxis:  { domain:[0.70,1.0],  anchor:"x",  title:{text:"Mean (°)",font:{size:10}}, gridcolor:"#1e2333", zeroline:false },
+
+    xaxis2: { domain:[0,1], anchor:"y2", showticklabels:false, gridcolor:"#1e2333", zeroline:false },
+    yaxis2: { domain:[0.36,0.66], anchor:"x2", title:{text:"Std Dev (°)",font:{size:10}}, gridcolor:"#1e2333", zeroline:false },
+
+    xaxis3: { domain:[0,1], anchor:"y3", title:{text:"Timestamp index",font:{size:10}}, gridcolor:"#1e2333", zeroline:false },
+    yaxis3: { domain:[0.0,0.32],  anchor:"x3", title:{text:"Count (pos−neg)",font:{size:10}}, gridcolor:"#1e2333", zeroline:false },
+  };
+
+  if (!statsInitialised) {
+    Plotly.newPlot("plot-stats", [...mean,...sd,...count], layout, CFG);
+    statsInitialised = true;
+  } else {
+    Plotly.react("plot-stats", [...mean,...sd,...count], layout);
+  }
+}
+
+function renderStatsEmpty() {
+  removeHint("plot-stats");
+  const layout = { ...BASE_LAYOUT,
+    annotations:[{ text:"No data matches threshold", xref:"paper", yref:"paper",
+      x:0.5, y:0.5, showarrow:false, font:{size:15,color:"#626880"} }]
+  };
+  if (!statsInitialised) { Plotly.newPlot("plot-stats",[],layout,CFG); statsInitialised=true; }
+  else                   { Plotly.react("plot-stats",[],layout); }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UI helpers
 // ─────────────────────────────────────────────────────────────────────────────
+function enc(s)  { return encodeURIComponent(s); }
+
+function removeHint(id) {
+  const h = document.querySelector(`#${id} .hint-msg`);
+  if (h) h.remove();
+}
+
 function setStatus(msg, cls) {
   const el = document.getElementById("status");
   el.textContent = msg;
@@ -855,18 +990,16 @@ function setStatus(msg, cls) {
 }
 
 function showError(msg) {
-  const box  = document.getElementById("error-box");
-  const text = document.getElementById("error-text");
-  text.textContent = msg;
+  const box = document.getElementById("error-box");
+  document.getElementById("error-text").textContent = msg;
   box.classList.add("visible");
 }
-
 function hideError() {
   document.getElementById("error-box").classList.remove("visible");
 }
 
-function showSpinner(on) {
-  document.getElementById("spinner").classList.toggle("visible", on);
+function showSpinner(which, on) {
+  document.getElementById(`spin-${which}`).classList.toggle("visible", on);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -876,6 +1009,7 @@ init();
 </html>
 """
 
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────────────────────────
@@ -883,37 +1017,21 @@ init();
 def main():
     global DATA_DIR
 
-    parser = argparse.ArgumentParser(
-        description="Bump Angle interactive viewer"
-    )
-    parser.add_argument(
-        "--data-dir",
-        required=True,
-        help="Root folder containing experiment sub-folders",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=5000,
-        help="Port to run on (default: 5000)",
-    )
-    parser.add_argument(
-        "--host",
-        default="127.0.0.1",
-        help="Host to bind to (default: 127.0.0.1)",
-    )
+    parser = argparse.ArgumentParser(description="Bump Angle interactive viewer")
+    parser.add_argument("--data-dir", required=True,
+                        help="Root folder containing experiment sub-folders")
+    parser.add_argument("--port", type=int, default=5000)
+    parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
 
     DATA_DIR = pathlib.Path(args.data_dir).expanduser().resolve()
-
     if not DATA_DIR.is_dir():
-        print(f"ERROR: data-dir does not exist or is not a directory: {DATA_DIR}")
+        print(f"ERROR: not a directory: {DATA_DIR}")
         sys.exit(1)
 
     print(f"  Data directory : {DATA_DIR}")
     print(f"  Serving at     : http://{args.host}:{args.port}")
     print()
-
     app.run(host=args.host, port=args.port, debug=False)
 
 
