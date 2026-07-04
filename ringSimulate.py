@@ -264,6 +264,8 @@ def process_file(input_path, output_csv_path, output_plot_path, include_groups=F
 
     normalized_rows = []
     for timestamp, arr in rows_data:
+        
+        print("length of hext is :",len(arr))
         norm_arr = []
         for v in arr:
             if v == 0.0:
@@ -302,6 +304,7 @@ def process_file(input_path, output_csv_path, output_plot_path, include_groups=F
         for countIn in range(N_BUMP_RUNS):
             ring         = RA()
             ring.h_ext   = row[1:]
+            print("length of hext is :",len(row[1:]))
 
             for _ in range(ring.updates_per_step):
                 i       = np.random.randint(0, ring.Ns)

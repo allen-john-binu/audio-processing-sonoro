@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Robot DOA Visualizer</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        /* ── Design tokens ──────────────────────────────────────────────────────── */
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --accent: #58a6ff;
+            --red: #f85149;
+            --blue: #58a6ff;
+            --muted: #8b949e;
+            --text: #e6edf3;
+            --mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+            --sans: "Inter", system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 14px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ────────────────────────────────────────────────────────────── */
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: var(--surface);
+        }
+
+        header h1 {
+            font-family: var(--mono);
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--accent);
+        }
+
+        header span.subtitle {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .dual-chart{
+
+    display:flex;
+    gap:18px;
+
+}
+
+.dual-chart .chart-wrap{
+
+    flex:1;
+
+}
+
+@media(max-width:1200px){
+
+    .dual-chart{
+
+        flex-direction:column;
+
+    }
+
+}
+
+        /* ── Sidebar + main layout ──────────────────────────────────────────────── */
+        .layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            height: calc(100vh - 53px);
+        }
+
+        aside {
+            width: 240px;
+            min-width: 200px;
+            border-right: 1px solid var(--border);
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 12px 16px 8px;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .file-list {
+            list-style: none;
+            overflow-y: auto;
+            flex: 1;
+            padding: 6px 0;
+        }
+
+        .file-list li {
+            padding: 8px 16px;
+            font-family: var(--mono);
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--muted);
+            border-left: 3px solid transparent;
+            transition: all 0.12s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-list li:hover {
+            color: var(--text);
+            background: rgba(88, 166, 255, 0.06);
+        }
+
+        .file-list li.active {
+            color: var(--accent);
+            border-left-color: var(--accent);
+            background: rgba(88, 166, 255, 0.08);
+        }
+
+        .empty-state {
+            padding: 24px 16px;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* ── Main content ───────────────────────────────────────────────────────── */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .welcome {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: var(--muted);
+        }
+
+        .welcome .icon {
+            font-size: 48px;
+        }
+
+        .welcome p {
+            font-family: var(--mono);
+            font-size: 13px;
+        }
+
+        /* ── Chart cards ────────────────────────────────────────────────────────── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .card-title {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .meta-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+
+        .badge.red {
+            color: var(--red);
+            border-color: rgba(248, 81, 73, 0.3);
+            background: rgba(248, 81, 73, 0.07);
+        }
+
+        .badge.blue {
+            color: var(--blue);
+            border-color: rgba(88, 166, 255, 0.3);
+            background: rgba(88, 166, 255, 0.07);
+        }
+
+        .chart-wrap {
+            padding: 8px;
+        }
+
+        /* ── DOA panel ──────────────────────────────────────────────────────────── */
+        #doa-panel {
+            display: none;
+        }
+
+        #doa-panel.visible {
+            display: block;
+        }
+
+        .doa-info {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .doa-kv {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .doa-kv span {
+            color: var(--text);
+        }
+
+        /* ── Loading overlay ────────────────────────────────────────────────────── */
+        #loading {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(13, 17, 23, 0.8);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            font-family: var(--mono);
+            color: var(--accent);
+        }
+
+        #loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Scrollbar ──────────────────────────────────────────────────────────── */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>⬡ robot·doa·viz</h1>
+        <span class="subtitle">direction-of-arrival · path visualizer</span>
+    </header>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside>
+            <div class="sidebar-header">CSV Files</div>
+            <ul class="file-list" id="file-list">
+                <li class="empty-state">Loading files…</li>
+            </ul>
+        </aside>
+
+        <!-- Main -->
+        <main id="main">
+            <div class="welcome" id="welcome">
+                <div class="icon">📡</div>
+                <p>Select a CSV file to begin</p>
+            </div>
+
+            <!-- Robot path chart -->
+            <div class="card" id="path-card" style="display:none">
+            
+                <div class="card-header">
+                    <span class="card-title">
+                        Robot Path + Spin History
+                    </span>
+            
+                    <div class="meta-badges">
+                        <span class="badge red">
+                            ● phi = –500 (invalid/no-signal)
+                        </span>
+            
+                        <span class="badge blue">
+                            ● phi ≠ –500 (click for DOA)
+                        </span>
+                    </div>
+                </div>
+            
+                <div class="dual-chart">
+            
+                    <div class="chart-wrap">
+                        <div id="path-chart" style="height:500px">
+                        </div>
+                    </div>
+            
+                    <div class="chart-wrap">
+                        <div id="spin-chart" style="height:500px">
+                        </div>
+                    </div>
+            
+                </div>
+            
+            </div>
+
+            <!-- DOA chart (appears on click) -->
+            <div class="card" id="doa-panel">
+                <div class="card-header">
+                    <span class="card-title">DOA Spectrum</span>
+                    <div class="doa-info" id="doa-info"></div>
+                </div>
+                <div class="chart-wrap">
+                    <div id="doa-chart" style="height:300px"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <span id="loading-msg">Loading…</span>
+    </div>
+
+    <script>
+        // ── Helpers ──────────────────────────────────────────────────────────────────
+
+        function showLoading(msg = "Loading…") {
+            document.getElementById("loading").classList.add("show");
+            document.getElementById("loading-msg").textContent = msg;
+        }
+        function hideLoading() {
+            document.getElementById("loading").classList.remove("show");
+        }
+
+        // Statistical mode for an array of numbers (returns the most frequent value)
+        function mode(arr) {
+            const freq = new Map();
+            let maxCount = 0, modeVal = arr[0];
+            for (const v of arr) {
+                const c = (freq.get(v) || 0) + 1;
+                freq.set(v, c);
+                if (c > maxCount) { maxCount = c; modeVal = v; }
+            }
+            return modeVal;
+        }
+
+        // Parse CSV text using PapaParse
+        function parseCSV(text) {
+            const result = Papa.parse(text.trim(), {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true,
+            });
+            return result.data;
+        }
+
+        // ── File list ─────────────────────────────────────────────────────────────────
+
+        async function loadFileList() {
+            try {
+                const res = await fetch("/api/files");
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const files = await res.json();
+                renderFileList(files);
+            } catch (e) {
+                document.getElementById("file-list").innerHTML =
+                    `<li class="empty-state">Could not reach server.<br>${e.message}</li>`;
+            }
+        }
+
+        let activeFile = null;
+
+        function renderFileList(files) {
+            const ul = document.getElementById("file-list");
+            if (!files.length) {
+                ul.innerHTML = `<li class="empty-state">No CSV files found.<br>Drop files into the data/ folder and refresh.</li>`;
+                return;
+            }
+            ul.innerHTML = files.map(f =>
+                `<li data-file="${f}" title="${f}">${f}</li>`
+            ).join("");
+            ul.querySelectorAll("li").forEach(li => {
+                li.addEventListener("click", () => {
+                    ul.querySelectorAll("li").forEach(x => x.classList.remove("active"));
+                    li.classList.add("active");
+                    loadCSV(li.dataset.file);
+                });
+            });
+        }
+
+        // ── CSV loading & plotting ────────────────────────────────────────────────────
+
+        let trajectoryHighlight = null;
+
+        function highlightTrajectory(idx) {
+                const row = validRows[idx];
+
+                Plotly.restyle(
+                    "path-chart",
+                    {
+
+                        x: [[row.robot_x]],
+                        y: [[row.robot_y]]
+
+                    },
+
+                    5
+                );
+            }
+
+            function highlightHeatmap(idx) {
+                    const t = validRows[idx].time_step;
+
+                    Plotly.relayout(
+                        "spin-chart",
+
+                        {
+
+                            shapes: [
+
+                                {
+
+                                    type: "line",
+
+                                    x0: t,
+                                    x1: t,
+
+                                    y0: -180,
+                                    y1: 180,
+
+                                    line: {
+
+                                        color: "red",
+
+                                        width: 2
+
+                                    }
+
+                                }
+
+                            ]
+
+                        }
+
+                    );
+                }
+
+        async function loadCSV(filename) {
+            showLoading(`Parsing ${filename}…`);
+            try {
+                const res = await fetch(`/api/csv?name=${encodeURIComponent(filename)}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const text = await res.text();
+                const rows = parseCSV(text);
+                if (!rows.length) throw new Error("CSV is empty or could not be parsed.");
+                activeFile = filename;
+                renderPathChart(rows);
+                renderSpinHistory(rows);
+            } catch (e) {
+                alert(`Failed to load "${filename}":\n${e.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // ── Path chart ────────────────────────────────────────────────────────────────
+
+        const PLOTLY_LAYOUT_BASE = {
+            paper_bgcolor: "rgba(0,0,0,0)",
+            plot_bgcolor: "rgba(0,0,0,0)",
+            font: { color: "#8b949e", family: "'JetBrains Mono', monospace", size: 11 },
+            xaxis: {
+                gridcolor: "#21262d", zerolinecolor: "#30363d",
+                tickfont: { color: "#8b949e" },
+            },
+            yaxis: {
+                gridcolor: "#21262d", zerolinecolor: "#30363d",
+                tickfont: { color: "#8b949e" },
+            },
+            margin: { t: 16, r: 16, b: 48, l: 56 },
+            hoverlabel: {
+                bgcolor: "#161b22",
+                bordercolor: "#30363d",
+                font: { color: "#e6edf3", family: "'JetBrains Mono', monospace", size: 11 },
+            },
+        };
+
+        function renderPathChart(rows) {
+            let validRows = [];
+            validRows = rows.filter(r => r.phi_in_degrees !== -500);
+            // Hide welcome, show charts
+            document.getElementById("welcome").style.display = "none";
+            document.getElementById("path-card").style.display = "block";
+            document.getElementById("doa-panel").classList.remove("visible");
+
+            // Separate valid (blue) and invalid (red) points
+            const blueRows = rows.filter(r => r.phi_in_degrees !== -500);
+            const redRows = rows.filter(r => r.phi_in_degrees === -500);
+
+            // Speaker positions via mode
+            const slx = mode(rows.map(r => r.speakerL_x));
+            const sly = mode(rows.map(r => r.speakerL_y));
+            const srx = mode(rows.map(r => r.speakerR_x));
+            const sry = mode(rows.map(r => r.speakerR_y));
+
+            // ── Traces ────────────────────────────────────────────────────────────────
+
+            // Full path line (thin, muted) — all rows in order
+            const pathLine = {
+                x: rows.map(r => r.robot_x),
+                y: rows.map(r => r.robot_y),
+                mode: "lines",
+                line: { color: "#30363d", width: 1.5 },
+                hoverinfo: "skip",
+                showlegend: false,
+                name: "path",
+            };
+
+            // Red points (phi = -500)
+            const redTrace = {
+                x: redRows.map(r => r.robot_x),
+                y: redRows.map(r => r.robot_y),
+                mode: "markers",
+                marker: {
+                    color: "#f85149", size: 7, symbol: "circle",
+                    line: { color: "#0d1117", width: 0.5 }
+                },
+                name: "phi = −500 (no signal)",
+                customdata: redRows.map((r, i) => ({ row: r, idx: i })),
+                hovertemplate:
+                    "<b>step %{customdata.row.time_step}</b><br>" +
+                    "x: %{x:.1f}  y: %{y:.1f}<br>" +
+                    "phi: %{customdata.row.phi_in_degrees}<extra></extra>",
+            };
+
+            // Blue points (phi ≠ -500) — clickable
+            const blueTrace = {
+                x: blueRows.map(r => r.robot_x),
+                y: blueRows.map(r => r.robot_y),
+                mode: "markers",
+                marker: {
+                    color: "#58a6ff", size: 9, symbol: "circle",
+                    line: { color: "#0d1117", width: 0.5 }
+                },
+                name: "phi ≠ −500 (click for DOA)",
+                customdata: blueRows.map(r => r),
+                hovertemplate:
+                    "<b>step %{customdata.time_step}</b><br>" +
+                    "x: %{x:.1f}  y: %{y:.1f}<br>" +
+                    "phi: %{customdata.phi_in_degrees:.2f}°<br>" +
+                    "<i>click to view DOA</i><extra></extra>",
+            };
+
+            // Speaker L marker
+            const speakerL = {
+                x: [slx], y: [sly],
+                mode: "markers+text",
+                marker: {
+                    color: "#f0883e", size: 14, symbol: "diamond",
+                    line: { color: "#e6edf3", width: 1.5 }
+                },
+                text: ["  L"],
+                textposition: "middle right",
+                textfont: { color: "#f0883e", size: 12, family: "monospace" },
+                name: "Speaker L",
+                hovertemplate: `<b>Speaker L</b><br>x: ${slx.toFixed(1)}  y: ${sly.toFixed(1)}<extra></extra>`,
+            };
+
+            // Speaker R marker
+            const speakerR = {
+                x: [srx], y: [sry],
+                mode: "markers+text",
+                marker: {
+                    color: "#3fb950", size: 14, symbol: "diamond",
+                    line: { color: "#e6edf3", width: 1.5 }
+                },
+                text: ["  R"],
+                textposition: "middle right",
+                textfont: { color: "#3fb950", size: 12, family: "monospace" },
+                name: "Speaker R",
+                hovertemplate: `<b>Speaker R</b><br>x: ${srx.toFixed(1)}  y: ${sry.toFixed(1)}<extra></extra>`,
+            };
+
+            const selectedPoint = {
+
+                x: [],
+
+                y: [],
+
+                mode: "markers",
+
+                marker: {
+
+                    size: 18,
+
+                    color: "yellow",
+
+                    line: {
+                        color: "black",
+                        width: 2
+                    },
+
+                    symbol: "circle-open"
+
+                },
+
+                hoverinfo: "skip",
+
+                showlegend: false
+
+            };
+            
+            const layout = {
+                ...PLOTLY_LAYOUT_BASE,
+                showlegend: true,
+                legend: {
+                    bgcolor: "rgba(22,27,34,0.8)",
+                    bordercolor: "#30363d",
+                    borderwidth: 1,
+                    font: { color: "#8b949e", size: 11 },
+                    x: 0.01, y: 0.99,
+                    xanchor: "left", yanchor: "top",
+                },
+                xaxis: { ...PLOTLY_LAYOUT_BASE.xaxis, title: { text: "robot_x", standoff: 8 } },
+                yaxis: {
+                    ...PLOTLY_LAYOUT_BASE.yaxis, title: { text: "robot_y", standoff: 8 },
+                    scaleanchor: "x", scaleratio: 1
+                },
+                dragmode: "pan",
+            };
+
+            const config = {
+                scrollZoom: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: ["select2d", "lasso2d"],
+                displaylogo: false,
+                responsive: true,
+            };
+
+            Plotly.react("path-chart", [pathLine, redTrace, blueTrace, speakerL, speakerR, selectedPoint], layout, config);
+
+            // ── Click handler for blue points ─────────────────────────────────────────
+            document.getElementById("path-chart").on("plotly_click", function (data) {
+                const pt = data.points[0];
+                // Only react to the blue trace (index 2 in our traces array)
+                if (pt.curveNumber !== 2) return;
+                const row = pt.customdata;
+                renderDOAChart(row);
+                renderDOAChart(row);
+
+                highlightTrajectory(pt.pointIndex);
+
+                highlightHeatmap(pt.pointIndex);
+            });
+        }
+
+        function renderSpinHistory(rows) {
+                    const validRows = rows.filter(
+                        r => r.phi_in_degrees !== -500
+                    );
+
+                    const spinCols = Object.keys(validRows[0])
+                        .filter(c => c.startsWith("spin_"))
+                        .sort((a, b) =>
+                            Number(a.split("_")[1]) -
+                            Number(b.split("_")[1])
+                        );
+
+                    const N = spinCols.length;
+
+                    const spins = validRows.map(r =>
+                        spinCols.map(c => Number(r[c]))
+                    );
+
+                    const angleAxis = Array.from(
+                        { length: N },
+                        (_, i) => -180 + i * 360 / (N - 1)
+                    );
+
+                //---------------------------------------------------
+                // heatmap
+                //---------------------------------------------------
+
+                const heatmap = {
+
+                    type: "heatmap",
+
+                    z: spins,
+
+                    x: validRows.map(r => r.time_step),
+
+                    y: angleAxis,
+
+                    transpose: true,
+
+                    colorscale: "Gray",
+
+                    showscale: false,
+
+                    hovertemplate:
+                        "time=%{x}<br>" +
+                        "angle=%{y:.1f}°<br>" +
+                        "spin=%{z}<extra></extra>"
+
+                };
+
+                //---------------------------------------------------
+                // phi curve
+                //---------------------------------------------------
+
+                const phi = {
+
+                    type: "scatter",
+
+                    mode: "lines",
+
+                    x: validRows.map(r => r.time_step),
+
+                    y: validRows.map(r => r.phi_in_degrees),
+
+                    line: {
+                        color: "red",
+                        width: 2
+                    },
+
+                    hovertemplate:
+                        "phi=%{y:.2f}°<extra></extra>"
+
+                };
+
+                Plotly.react(
+                    "spin-chart",
+
+                    [heatmap, phi],
+
+                    {
+
+                        ...PLOTLY_LAYOUT_BASE,
+
+                        title: "Spin history",
+
+                        xaxis: {
+                            title: "time step"
+                        },
+
+                        yaxis: {
+                            title: "Angle (deg)",
+                            range: [-180, 180]
+                        },
+
+                        margin: {
+                            t: 40,
+                            l: 60,
+                            r: 20,
+                            b: 50
+                        }
+
+                    },
+
+                    {
+
+                        responsive: true,
+                        displaylogo: false
+
+                    }
+
+                );
+
+                document.getElementById("spin-chart")
+                .on("plotly_click", function (data) {
+
+                    const point = data.points[0];
+
+                    const idx = point.pointNumber[1];
+
+                    const row = validRows[idx];
+
+                    renderDOAChart(row);
+
+                    highlightTrajectory(idx);
+
+                });
+
+            }
+
+        // ── DOA chart ─────────────────────────────────────────────────────────────────
+
+        function renderDOAChart(row) {
+            const panel = document.getElementById("doa-panel");
+            panel.classList.add("visible");
+
+            const doaCols = Object.keys(row)
+                .filter(c => c.startsWith("doa_"))
+                .sort((a, b) =>
+                    Number(a.slice(4)) - Number(b.slice(4)));
+
+            const N = doaCols.length;
+
+            // Angle axis: +180 -> -180
+            const xVals = Array.from(
+                { length: N },
+                (_, i) => 180 - i * 360 / (N - 1)
+            );
+
+            const yVals = doaCols.map(c => Number(row[c]));
+
+            // Peak index
+            const peakIdx = yVals.indexOf(Math.max(...yVals));
+
+            // Info bar
+            document.getElementById("doa-info").innerHTML = [
+                `<span class="doa-kv">step <span>${row.time_step}</span></span>`,
+                `<span class="doa-kv">phi <span>${(+row.phi_in_degrees).toFixed(3)}°</span></span>`,
+                `<span class="doa-kv">robot (${(+row.robot_x).toFixed(1)}, ${(+row.robot_y).toFixed(1)})</span>`,
+                `<span class="doa-kv">peak @ idx <span>${peakIdx}</span></span>`,
+            ].join("");
+
+            const trace = {
+                x: xVals,
+                y: yVals,
+                mode: "lines+markers",
+                line: { color: "#58a6ff", width: 1.8 },
+                marker: { color: "#58a6ff", size: 3 },
+                fill: "tozeroy",
+                fillcolor: "rgba(88,166,255,0.08)",
+                name: "DOA",
+                hovertemplate: "idx %{x}: %{y:.6f}<extra></extra>",
+            };
+
+            // Highlight peak
+            const peakTrace = {
+                x: [peakIdx],
+                y: [yVals[peakIdx]],
+                mode: "markers",
+                marker: {
+                    color: "#f0883e", size: 10, symbol: "triangle-up",
+                    line: { color: "#e6edf3", width: 1 }
+                },
+                name: "peak",
+                hovertemplate: `peak @ ${peakIdx}: ${yVals[peakIdx].toFixed(6)}<extra></extra>`,
+            };
+
+            const layout = {
+                ...PLOTLY_LAYOUT_BASE,
+                xaxis: {
+                    ...PLOTLY_LAYOUT_BASE.xaxis,
+                    title: {
+                        text: "Angle (deg)",
+                        standoff: 8
+                    },
+                    range: [180, -180]
+                },
+                yaxis: {
+                    ...PLOTLY_LAYOUT_BASE.yaxis,
+                    title: { text: "value", standoff: 8 },
+                },
+                showlegend: false,
+            };
+
+            const config = {
+                scrollZoom: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: ["select2d", "lasso2d"],
+                displaylogo: false,
+                responsive: true,
+            };
+
+            Plotly.newPlot("doa-chart", [trace, peakTrace], layout, config);
+
+            // Scroll DOA panel into view
+            panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+
+        // ── Boot ──────────────────────────────────────────────────────────────────────
+        loadFileList();
+    </script>
+</body>
+
+</html>

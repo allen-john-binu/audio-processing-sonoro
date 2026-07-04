@@ -24,7 +24,7 @@ sweep = np.pad(sweep, (int(fs * 0.1), int(fs * 0.1)))
 
 sweeps_combined = sweep
 
-target_duration = 80  # seconds
+target_duration = 60  # seconds
 repeats = int(np.ceil(target_duration / (len(sweeps_combined) / fs)))
 long_signal = np.tile(sweeps_combined, repeats)
 long_signal = long_signal[:int(fs * target_duration)]
@@ -57,36 +57,36 @@ long_signal = long_signal[:int(fs * target_duration)]
 # =========================
 # Gaussian parameters
 # =========================
-sigma = 0.2  # try: 0.025, 0.05, 0.1, 0.2
+# sigma = 0.1  # try: 0.025, 0.05, 0.1, 0.2
 
-base_left = 0.6
-base_right = 0.6
+# base_left = 0.6
+# base_right = 0.6
 
-# =========================
-# Generate noise (once)
-# =========================
-np.random.seed(0)  # optional (reproducible)
+# # =========================
+# # Generate noise (once)
+# # =========================
+# np.random.seed(0)  # optional (reproducible)
 
-noise_left = np.random.normal(0, sigma, size=len(long_signal))
-noise_right = np.random.normal(0, sigma, size=len(long_signal))
+# noise_left = np.random.normal(0, sigma, size=len(long_signal))
+# noise_right = np.random.normal(0, sigma, size=len(long_signal))
 
-# =========================
-# Volume envelopes (arrays)
-# =========================
-left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
-right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
+# # =========================
+# # Volume envelopes (arrays)
+# # =========================
+# left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
+# right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
 # =========================
 # Constant volumes
 # =========================
 # =========================
 # Constant channel volumes
 # =========================
-# base_left = 1.0
+base_left = 1.0
 
-# base_right = 1.0
+base_right = 0.80
 
-# left_volumes = np.full(len(long_signal), base_left)
-# right_volumes = np.full(len(long_signal), base_right)
+left_volumes = np.full(len(long_signal), base_left)
+right_volumes = np.full(len(long_signal), base_right)
 
 stereo_signal = np.column_stack((
     long_signal * left_volumes,
@@ -104,10 +104,12 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(EMPTY_COPY_DIR, exist_ok=True)
 
 if len(sys.argv) < 2:
-    print("Usage: python script.py <filename>")
+    print("Usage: python script.py <filename> [--plot-only]")
     sys.exit(1)
 
 filename = sys.argv[1]
+plot_only = "--plot-only" in sys.argv
+
 if not filename.lower().endswith(".csv"):
     filename += ".csv"
 
@@ -183,37 +185,48 @@ except KeyboardInterrupt:
     print("\nInterrupted by user.")
 
 finally:
-    print("Writing CSV...")
 
-    with open(csv_filename, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['timestamp', 'sample_index', 'time_seconds', 'left_volume', 'right_volume'])
-        writer.writerows(csv_rows)
+    if not plot_only:
+        print("Writing CSV...")
 
-    print(f"CSV saved: {csv_filename}")
-    print(f"Total rows: {len(csv_rows)}")
-    
-    # Create an empty CSV with the same filename
-    with open(empty_csv_filename, 'w', newline='') as f:
-        pass
+        with open(csv_filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'timestamp',
+                'sample_index',
+                'time_seconds',
+                'left_volume',
+                'right_volume'
+            ])
+            writer.writerows(csv_rows)
 
-    print(f"Empty CSV created: {empty_csv_filename}")
+        print(f"CSV saved: {csv_filename}")
+        print(f"Total rows: {len(csv_rows)}")
+
+        with open(empty_csv_filename, 'w', newline='') as f:
+            pass
+
+        print(f"Empty CSV created: {empty_csv_filename}")
+
+    else:
+        print("Plot-only mode: no files saved.")
     
         # =========================
     # Plot saved volume data
     # =========================
     if csv_rows:
-        timestamps = [row[0] for row in csv_rows]
+        times = [float(row[2]) for row in csv_rows]
         left_vals = [float(row[3]) for row in csv_rows]
         right_vals = [float(row[4]) for row in csv_rows]
 
         plt.figure(figsize=(12, 5))
-        plt.plot(left_vals, label="Left Volume", color="blue")
-        plt.plot(right_vals, label="Right Volume", color="red")
+        plt.plot(times, left_vals, label="Left Volume", color="blue")
+        plt.plot(times, right_vals, label="Right Volume", color="red")
 
         plt.title("Input Volume Envelopes")
-        plt.xlabel("Logged Sample")
+        plt.xlabel("Time (s)")
         plt.ylabel("Volume")
+        plt.ylim(0, 1.2)   # always show 0 to 1.2 seconds
         plt.grid(True)
         plt.legend()
         plt.show()

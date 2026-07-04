@@ -329,6 +329,9 @@
         </select>
         <button id="btn-refresh" class="secondary" title="Refresh run list">↺ Refresh</button>
         <button id="btn-load" disabled>Load →</button>
+        <!-- After the existing Load → button -->
+        <button id="btn-prev" disabled>← Prev</button>
+        <button id="btn-next" disabled>Next →</button>
 
         <div style="display:flex;align-items:center;gap:8px;">
             <label>Colormap</label>
@@ -481,7 +484,7 @@
 
             const heatTrace = {
                 type: 'heatmap',
-                x: elapsed,
+                x: elapsed.map((_, i) => i),
                 y: angles,
                 z: intensity_matrix,  // log-transformed values
                 transpose: true,
@@ -494,13 +497,13 @@
                     thickness: 12,
                     tickfont: { size: 9 },
                 },
-                hovertemplate: 'time: %{x:.2f}s<br>angle: %{y}°<br>intensity: %{z:.4e}<extra></extra>',
+                hovertemplate: 'index: %{x}<br>angle: %{y}°<br>intensity: %{z:.4e}<extra></extra>',
             };
 
             const p1Trace = {
                 type: 'scatter', mode: 'markers',
                 name: 'Peak 1',
-                x: elapsed,
+                x: elapsed.map((_, i) => i),
                 y: peak1,
                 marker: { color: '#00e5ff', size: 4, opacity: 0.85 },
                 hovertemplate: 'time: %{x:.2f}s<br>Peak1: %{y}°<extra></extra>',
@@ -509,7 +512,7 @@
             const p2Trace = {
                 type: 'scatter', mode: 'markers',
                 name: 'Peak 2',
-                x: elapsed,
+                x: elapsed.map((_, i) => i),
                 y: peak2,
                 marker: { color: '#ff6b35', size: 4, opacity: 0.85 },
                 hovertemplate: 'time: %{x:.2f}s<br>Peak2: %{y}°<extra></extra>',
@@ -517,7 +520,7 @@
 
             const layout = baseLayout({
                 xaxis: {
-                    title: { text: 'Elapsed (s)', standoff: 8 },
+                    title: { text: 'Index', standoff: 8 },
                     gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
                     tickfont: { size: 10 },
                 },
@@ -534,23 +537,22 @@
         // ── Build peak diff trace ──────────────────────────────────────────────────────
         function buildPeakDiff(data) {
             const { elapsed, diffs } = data;
-
-            const colors = diffs.map(v => v === null ? '#ff4d4d' : '#00e5ff');
+            const colors = diffs.map(v => v === null ? '#ff69b4' : '#ffff00');
             const yVals = diffs.map(v => v === null ? 0 : v);
 
             const trace = {
                 type: 'scatter', mode: 'markers',
                 name: '|Peak1 − Peak2|',
-                x: elapsed,
+                x: elapsed.map((_, i) => i),
                 y: yVals,
                 marker: { color: colors, size: 5, opacity: 0.9 },
-                hovertemplate: 'time: %{x:.2f}s<br>diff: %{y:.4e}<extra></extra>',
+                hovertemplate: 'index: % { x }<br>diff: %{y:.4e}<extra></extra>',
             };
 
             const layout = baseLayout({
                 showlegend: false,
                 xaxis: {
-                    title: { text: 'Elapsed (s)', standoff: 8 },
+                    title: { text: 'Timestamp index', standoff: 8 },
                     gridcolor: GRID_COLOR, zerolinecolor: GRID_COLOR,
                     tickfont: { size: 10 },
                 },
@@ -578,7 +580,7 @@
             const robotHover = elapsed.map((e, i) => {
                 const aL = traj_angle_L[i] !== null ? traj_angle_L[i].toFixed(1) + '°' : 'n/a';
                 const aR = traj_angle_R[i] !== null ? traj_angle_R[i].toFixed(1) + '°' : 'n/a';
-                return `t:${e.toFixed(2)}s<br>x:${t.robot_x[i].toFixed(3)} y:${t.robot_y[i].toFixed(3)}<br>∠SpeakerL:${aL}<br>∠SpeakerR:${aR}`;
+                return `i:${i}<br>x:${t.robot_x[i].toFixed(3)} y:${t.robot_y[i].toFixed(3)}<br>∠SpeakerL:${aL}<br>∠SpeakerR:${aR}`;
             });
 
             const robotTrace = {
@@ -588,9 +590,9 @@
                 text: robotHover,
                 hovertemplate: '%{text}<extra>Robot</extra>',
                 marker: {
-                    color: elapsed, colorscale: 'Viridis', size: 5, opacity: 0.85,
+                    color: elapsed.map((_, i) => i), colorscale: 'Viridis', size: 5, opacity: 0.85,
                     symbol: 'circle',
-                    colorbar: { title: { text: 'Elapsed (s)', font: { size: 10 } }, thickness: 10, tickfont: { size: 9 }, x: 1.02 },
+                    colorbar: { title: { text: 'Index', font: { size: 10 } }, thickness: 10, tickfont: { size: 9 }, x: 1.02 },
                     showscale: true,
                 },
             };
@@ -598,7 +600,7 @@
             // Speaker L trace — hover shows angle to robot movement
             const spkLHover = elapsed.map((e, i) => {
                 const aL = traj_angle_L[i] !== null ? traj_angle_L[i].toFixed(1) + '°' : 'n/a';
-                return `t:${e.toFixed(2)}s<br>x:${t.speakerL_x[i].toFixed(3)} y:${t.speakerL_y[i].toFixed(3)}<br>∠to robot heading:${aL}`;
+                return `i:${i}<br>x:${t.speakerL_x[i].toFixed(3)} y:${t.speakerL_y[i].toFixed(3)}<br>∠to robot heading:${aL}`;
             });
 
             const spkLTrace = {
@@ -613,7 +615,7 @@
             // Speaker R trace
             const spkRHover = elapsed.map((e, i) => {
                 const aR = traj_angle_R[i] !== null ? traj_angle_R[i].toFixed(1) + '°' : 'n/a';
-                return `t:${e.toFixed(2)}s<br>x:${t.speakerR_x[i].toFixed(3)} y:${t.speakerR_y[i].toFixed(3)}<br>∠to robot heading:${aR}`;
+                return `i:${i}<br>x:${t.speakerR_x[i].toFixed(3)} y:${t.speakerR_y[i].toFixed(3)}<br>∠to robot heading:${aR}`;
             });
 
             const spkRTrace = {
@@ -863,6 +865,7 @@
             } finally {
                 showLoading(false);
                 document.getElementById('btn-load').disabled = false;
+                updateNavButtons();  
             }
         }
 
@@ -904,8 +907,28 @@
             }, 80);   // debounce 80 ms
         }
 
+        function updateNavButtons() {
+                const sel = document.getElementById('run-select');
+                const idx = sel.selectedIndex - 1; // -1 because of the placeholder option
+                const total = sel.options.length - 1;
+                document.getElementById('btn-prev').disabled = idx <= 0;
+                document.getElementById('btn-next').disabled = idx < 0 || idx >= total - 1;
+            }
+
+            function navigateRun(delta) {
+                const sel = document.getElementById('run-select');
+                const newIdx = sel.selectedIndex + delta; // placeholder is index 0, runs start at 1
+                if (newIdx < 1 || newIdx >= sel.options.length) return;
+                sel.selectedIndex = newIdx;
+                updateNavButtons();
+                loadRun(sel.value);
+            }
+
+            document.getElementById('btn-prev').addEventListener('click', () => navigateRun(-1));
+            document.getElementById('btn-next').addEventListener('click', () => navigateRun(+1));
+
         // ── Populate run list ──────────────────────────────────────────────────────────
-        async function refreshRuns() {
+      async function refreshRuns() {
             setStatus('Refreshing run list…');
             try {
                 const res = await fetch('/api/runs');
@@ -924,12 +947,12 @@
                 setStatus(`Failed to fetch runs: ${err.message}`, 'error');
             }
         }
-
         // ── Event wiring ───────────────────────────────────────────────────────────────
         document.getElementById('btn-refresh').addEventListener('click', refreshRuns);
 
         document.getElementById('run-select').addEventListener('change', e => {
             document.getElementById('btn-load').disabled = !e.target.value;
+            updateNavButtons();
         });
 
         document.getElementById('btn-load').addEventListener('click', () => {

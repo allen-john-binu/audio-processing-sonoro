@@ -5,6 +5,7 @@ import sys
 import time
 from datetime import datetime
 import xml.etree.ElementTree as ET
+import matplotlib.pyplot as plt
 
 import numpy as np
 import qtm
@@ -17,7 +18,9 @@ import qtm
 QTM_ADDRESS = "10.126.17.54"
 PASSWORD = "robot609"
 
-SAVE_DIR = "ztLabCollection/dataFromQualis"   # <-- change as needed
+SAVE_DIR = "ztLabReal/dataFromQualis"   # <-- change as needed
+EMPTY_COPY_DIR = "ztLabReal/dataFromRing" 
+
 
 BODY_NAMES = {
     "robat": "robot",
@@ -43,11 +46,52 @@ def create_body_index(xml_string):
     return body_to_index
 
 
+def plot_trajectories(trajectory):
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    body_names = ["robot", "speakerL", "speakerR"]
+
+    for ax, body in zip(axes, body_names):
+
+        x = np.array(trajectory[body]["x"])
+        y = np.array(trajectory[body]["y"])
+        t = np.array(trajectory[body]["t"])
+
+        if len(x) == 0:
+            ax.set_title(f"{body} (no data)")
+            continue
+
+        t_rel = t - t[0]
+
+        scatter = ax.scatter(
+            x,
+            y,
+            c=t_rel,
+            cmap="viridis",
+            s=5,
+        )
+
+        plt.colorbar(
+            scatter,
+            ax=ax,
+            label="Time [s]"
+        )
+
+        ax.set_title(body)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.axis("equal")
+        ax.grid(True)
+
+    plt.tight_layout()
+    plt.show()
+
 # ============================================================
 # MAIN LOGGER
 # ============================================================
 
-async def collect_data(output_csv):
+async def collect_data(output_csv,empty_csv_filename):
 
     global qtm_start_estimate
 
@@ -69,6 +113,12 @@ async def collect_data(output_csv):
 
     frame_count = 0
     last_report_time = time.time()
+    
+    trajectory = {
+    "robot": {"t": [], "x": [], "y": []},
+    "speakerL": {"t": [], "x": [], "y": []},
+    "speakerR": {"t": [], "x": [], "y": []},
+}
 
     csv_file = open(output_csv, "w", newline="")
     writer = csv.writer(csv_file)
@@ -129,6 +179,9 @@ async def collect_data(output_csv):
 
                 row[f"{csv_prefix}_x"] = x
                 row[f"{csv_prefix}_y"] = y
+                trajectory[csv_prefix]["t"].append(abs_timestamp_ns / 1e9)
+                trajectory[csv_prefix]["x"].append(x)
+                trajectory[csv_prefix]["y"].append(y)
 
             except Exception:
                 pass
@@ -186,6 +239,13 @@ async def collect_data(output_csv):
         connection.disconnect()
 
         print("CSV saved.")
+        with open(empty_csv_filename, 'w', newline='') as f:
+            pass
+
+        print(f"Empty CSV created: {empty_csv_filename}")
+
+        print("Generating trajectory plot...")
+        plot_trajectories(trajectory)
 
 
 # ============================================================
@@ -209,5 +269,6 @@ if __name__ == "__main__":
     os.makedirs(SAVE_DIR, exist_ok=True)
 
     output_csv = os.path.join(SAVE_DIR, filename)
+    empty_csv_filename = os.path.join(EMPTY_COPY_DIR, filename)
 
-    asyncio.run(collect_data(output_csv))
+    asyncio.run(collect_data(output_csv,empty_csv_filename))
