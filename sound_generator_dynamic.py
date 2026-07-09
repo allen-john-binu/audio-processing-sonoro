@@ -24,7 +24,7 @@ sweep = np.pad(sweep, (int(fs * 0.1), int(fs * 0.1)))
 
 sweeps_combined = sweep
 
-target_duration = 60  # seconds
+target_duration = 480  # seconds
 repeats = int(np.ceil(target_duration / (len(sweeps_combined) / fs)))
 long_signal = np.tile(sweeps_combined, repeats)
 long_signal = long_signal[:int(fs * target_duration)]
@@ -97,8 +97,8 @@ stereo_signal = np.column_stack((
 # CSV setup
 # =========================
 # Hardcoded folders
-OUTPUT_DIR = "ztLabCollection/dataFromSound"  
-EMPTY_COPY_DIR = "ztLabCollection/dataFromReal" 
+OUTPUT_DIR = "ztLabRealWithCam/dataFromSound"  
+EMPTY_COPY_DIR = "ztLabRealWithCam/dataFromReal" 
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(EMPTY_COPY_DIR, exist_ok=True)
@@ -214,19 +214,19 @@ finally:
         # =========================
     # Plot saved volume data
     # =========================
-    if csv_rows:
-        times = [float(row[2]) for row in csv_rows]
-        left_vals = [float(row[3]) for row in csv_rows]
-        right_vals = [float(row[4]) for row in csv_rows]
+    # if csv_rows:
+    #     times = [float(row[2]) for row in csv_rows]
+    #     left_vals = [float(row[3]) for row in csv_rows]
+    #     right_vals = [float(row[4]) for row in csv_rows]
 
-        plt.figure(figsize=(12, 5))
-        plt.plot(times, left_vals, label="Left Volume", color="blue")
-        plt.plot(times, right_vals, label="Right Volume", color="red")
+    #     plt.figure(figsize=(12, 5))
+    #     plt.plot(times, left_vals, label="Left Volume", color="blue")
+    #     plt.plot(times, right_vals, label="Right Volume", color="red")
 
-        plt.title("Input Volume Envelopes")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Volume")
-        plt.ylim(0, 1.2)   # always show 0 to 1.2 seconds
-        plt.grid(True)
-        plt.legend()
-        plt.show()
+    #     plt.title("Input Volume Envelopes")
+    #     plt.xlabel("Time (s)")
+    #     plt.ylabel("Volume")
+    #     plt.ylim(0, 1.2)   # always show 0 to 1.2 seconds
+    #     plt.grid(True)
+    #     plt.legend()
+    #     plt.show()

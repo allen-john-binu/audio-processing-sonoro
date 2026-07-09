@@ -288,6 +288,8 @@ class RobotMove():
 
                                 # self.move_forward()
                                 
+                                # clip the max of h_ext and change left and right
+                                
                                 # time.sleep(0.5) 
                                 print(f'Arc move: phi={self.heading:.1f}°')
                                 self.arc_move(self.heading, duration=0.5)

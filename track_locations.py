@@ -18,8 +18,8 @@ import qtm
 QTM_ADDRESS = "10.126.17.54"
 PASSWORD = "robot609"
 
-SAVE_DIR = "ztLabReal/dataFromQualis"   # <-- change as needed
-EMPTY_COPY_DIR = "ztLabReal/dataFromRing" 
+SAVE_DIR = "ztLabRealWithCam/dataFromQualis"   # <-- change as needed
+EMPTY_COPY_DIR = "ztLabRealWithCam/dataFromRing" 
 
 
 BODY_NAMES = {
@@ -245,7 +245,7 @@ async def collect_data(output_csv,empty_csv_filename):
         print(f"Empty CSV created: {empty_csv_filename}")
 
         print("Generating trajectory plot...")
-        plot_trajectories(trajectory)
+        # plot_trajectories(trajectory)
 
 
 # ============================================================
@@ -267,6 +267,7 @@ if __name__ == "__main__":
         filename += ".csv"
 
     os.makedirs(SAVE_DIR, exist_ok=True)
+    os.makedirs(EMPTY_COPY_DIR, exist_ok=True)
 
     output_csv = os.path.join(SAVE_DIR, filename)
     empty_csv_filename = os.path.join(EMPTY_COPY_DIR, filename)

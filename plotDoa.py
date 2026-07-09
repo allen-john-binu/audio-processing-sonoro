@@ -38,7 +38,7 @@ df = pd.read_csv("hi.csv")
 angles = np.array(df.columns[2:], dtype=float)
 
 # Single row of intensity values
-intensities = df.iloc[0, 2:].astype(float).values
+intensities = df.iloc[425, 2:].astype(float).values
 
 
 # ============================================================
