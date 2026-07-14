@@ -38,43 +38,43 @@ long_signal = long_signal[:int(fs * target_duration)]
 # def right_volume_envelope(t):
 #     return 1.0
 
-delta = 0.15      # try: 0.025, 0.05, 0.1, 0.15
-mod_freq = 0.2  # Hz
+# delta = 0.15      # try: 0.025, 0.05, 0.1, 0.15
+# mod_freq = 0.2  # Hz
 
-base_left = 0.7
-base_right = 0.7
+# base_left = 0.7
+# base_right = 0.7
 
-def left_volume_envelope(t):
-    return base_left + delta * np.sin(2 * np.pi * mod_freq * t)
+# def left_volume_envelope(t):
+#     return base_left + delta * np.sin(2 * np.pi * mod_freq * t)
 
-def right_volume_envelope(t):
-    return base_right - delta * np.sin(2 * np.pi * mod_freq * t)
+# def right_volume_envelope(t):
+#     return base_right - delta * np.sin(2 * np.pi * mod_freq * t)
 
-time_vector = np.arange(len(long_signal)) / fs
-left_volumes = np.array([left_volume_envelope(t) for t in time_vector])
-right_volumes = np.array([right_volume_envelope(t) for t in time_vector])
+# time_vector = np.arange(len(long_signal)) / fs
+# left_volumes = np.array([left_volume_envelope(t) for t in time_vector])
+# right_volumes = np.array([right_volume_envelope(t) for t in time_vector])
 
 # =========================
 # Gaussian parameters
 # =========================
-# sigma = 0.1  # try: 0.025, 0.05, 0.1, 0.2
+sigma = 0.2  # try: 0.025, 0.05, 0.1, 0.2
 
-# base_left = 0.6
-# base_right = 0.6
+base_left = 0.6
+base_right = 0.6
 
-# # =========================
-# # Generate noise (once)
-# # =========================
-# np.random.seed(0)  # optional (reproducible)
+# =========================
+# Generate noise (once)
+# =========================
+np.random.seed(0)  # optional (reproducible)
 
-# noise_left = np.random.normal(0, sigma, size=len(long_signal))
-# noise_right = np.random.normal(0, sigma, size=len(long_signal))
+noise_left = np.random.normal(0, sigma, size=len(long_signal))
+noise_right = np.random.normal(0, sigma, size=len(long_signal))
 
-# # =========================
-# # Volume envelopes (arrays)
-# # =========================
-# left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
-# right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
+# =========================
+# Volume envelopes (arrays)
+# =========================
+left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
+right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
 # =========================
 # Constant volumes
 # =========================
