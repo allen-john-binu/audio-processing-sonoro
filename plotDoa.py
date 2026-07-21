@@ -38,21 +38,11 @@ df = pd.read_csv("hi.csv")
 angles = np.array(df.columns[2:], dtype=float)
 
 # Single row of intensity values
-intensities = df.iloc[425, 2:].astype(float).values
+intensities = df.iloc[702, 2:].astype(float).values
 
 
 # ============================================================
-# Plot 1: Original intensity vs angle
-# ============================================================
-plt.figure(figsize=(8, 5))
-plt.plot(angles, intensities, marker="o",  color="blue")
-plt.xlabel("angle")
-plt.ylabel("intensity")
-plt.tight_layout()
-
-
-# ============================================================
-# Plot 2: Min-max normalized intensity vs angle
+# Normalize intensity
 # ============================================================
 min_val = 0.0000000005
 max_val = 0.0000068100
@@ -62,17 +52,10 @@ if max_val == min_val:
 else:
     normalized = (intensities - min_val) / (max_val - min_val)
 
-plt.figure(figsize=(8, 5))
-plt.plot(angles, normalized, marker="o", color="red")
-plt.xlabel("angle")
-plt.ylabel("intensity")
-plt.tight_layout()
-
 
 # ============================================================
-# Plot 3:
-# Create a 120-element array representing
-# angles from -180° to 177° with 3° resolution
+# Create 120-element ring input
+# -180° to 177° with 3° resolution
 # ============================================================
 full_array_doa = np.zeros(120)
 
@@ -82,13 +65,45 @@ for angle, value in zip(angles, intensities):
 
 ring_input = doa_to_row(full_array_doa)
 
-# x-axis as actual angles
 full_angles = np.arange(-180, 180, 3)
 
-plt.figure(figsize=(10, 5))
-plt.plot(full_angles, ring_input, marker="o", color="green")
-plt.xlabel("angle")
-plt.ylabel("intensity")
-plt.tight_layout()
+
+# ============================================================
+# Combined figure: 3 plots horizontally
+# ============================================================
+fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+
+
+# (a) Original DOA intensity
+axes[0].plot(angles, intensities, marker="o", color="blue")
+axes[0].set_xlabel("Angle (°)")
+axes[0].set_ylabel("Intensity")
+axes[0].set_title("(a) Original DOA intensity")
+
+# (b) Min-max normalized intensity
+axes[1].plot(angles, normalized, marker="o", color="red")
+axes[1].set_xlabel("Angle (°)")
+axes[1].set_ylabel("Normalized intensity")
+axes[1].set_title("(b) Min-max normalization")
+
+# (c) Final ring attractor input
+axes[2].plot(full_angles, ring_input, marker="o", color="green")
+axes[2].set_xlabel("Angle (°)")
+axes[2].set_ylabel("External input")
+axes[2].set_title("(c) Ring attractor input")
+
+
+# Improve spacing
+fig.tight_layout()
+
+
+# ============================================================
+# Save as vector PDF
+# ============================================================
+fig.savefig(
+    "doa_normalization_pipeline.pdf",
+    format="pdf",
+    bbox_inches="tight"
+)
 
 plt.show()

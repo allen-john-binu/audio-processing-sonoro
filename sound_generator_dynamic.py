@@ -38,7 +38,7 @@ long_signal = long_signal[:int(fs * target_duration)]
 # def right_volume_envelope(t):
 #     return 1.0
 
-# delta = 0.15      # try: 0.025, 0.05, 0.1, 0.15
+# delta = 0.10      # try: 0.025, 0.05, 0.1, 0.15
 # mod_freq = 0.2  # Hz
 
 # base_left = 0.7
@@ -57,36 +57,36 @@ long_signal = long_signal[:int(fs * target_duration)]
 # =========================
 # Gaussian parameters
 # =========================
-# sigma = 0.2  # try: 0.025, 0.05, 0.1, 0.2
+sigma = 0.2  # try: 0.025, 0.05, 0.1, 0.2
 
-# base_left = 0.6
-# base_right = 0.6
+base_left = 0.6
+base_right = 0.6
 
-# # =========================
-# # Generate noise (once)
-# # =========================
-# np.random.seed(0)  # optional (reproducible)
+# =========================
+# Generate noise (once)
+# =========================
+np.random.seed(0)  # optional (reproducible)
 
-# noise_left = np.random.normal(0, sigma, size=len(long_signal))
-# noise_right = np.random.normal(0, sigma, size=len(long_signal))
+noise_left = np.random.normal(0, sigma, size=len(long_signal))
+noise_right = np.random.normal(0, sigma, size=len(long_signal))
 
 # =========================
 # Volume envelopes (arrays)
 # =========================
-# left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
-# right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
+left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
+right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
 # =========================
 # Constant volumes
 # =========================
 # =========================
 # Constant channel volumes
 # =========================
-base_left = 1.0
+# base_left = 1.0
 
-base_right = 1.0
+# base_right = 0.8
 
-left_volumes = np.full(len(long_signal), base_left)
-right_volumes = np.full(len(long_signal), base_right)
+# left_volumes = np.full(len(long_signal), base_left)
+# right_volumes = np.full(len(long_signal), base_right)
 
 stereo_signal = np.column_stack((
     long_signal * left_volumes,
@@ -214,19 +214,20 @@ finally:
         # =========================
     # Plot saved volume data
     # =========================
-    # if csv_rows:
-    #     times = [float(row[2]) for row in csv_rows]
-    #     left_vals = [float(row[3]) for row in csv_rows]
-    #     right_vals = [float(row[4]) for row in csv_rows]
+    if csv_rows:
+        times = [float(row[2]) for row in csv_rows]
+        left_vals = [float(row[3]) for row in csv_rows]
+        right_vals = [float(row[4]) for row in csv_rows]
 
-    #     plt.figure(figsize=(12, 5))
-    #     plt.plot(times, left_vals, label="Left Volume", color="blue")
-    #     plt.plot(times, right_vals, label="Right Volume", color="red")
+        plt.figure(figsize=(12, 5))
+        plt.plot(times, left_vals, label="Left Volume", color="blue")
+        plt.plot(times, right_vals, label="Right Volume", color="red")
 
-    #     plt.title("Input Volume Envelopes")
-    #     plt.xlabel("Time (s)")
-    #     plt.ylabel("Volume")
-    #     plt.ylim(0, 1.2)   # always show 0 to 1.2 seconds
-    #     plt.grid(True)
-    #     plt.legend()
-    #     plt.show()
+        plt.title("Input Volume Envelopes")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Volume")
+        plt.ylim(0, 1.2)   # always show 0 to 1.2 seconds
+        plt.grid(True)
+        plt.legend()
+        plt.savefig("noise_modulation.pdf", bbox_inches="tight")
+        plt.show()
