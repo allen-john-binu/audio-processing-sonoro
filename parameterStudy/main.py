@@ -9,6 +9,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
 
+from datetime import datetime
+
 
 # =============================================================================
 # CONFIGURATION
@@ -1410,6 +1412,18 @@ def run_study(
         output_dir,
         exist_ok=True
     )
+    
+    # -------------------------------------------------------------------------
+    # Start timing
+    # -------------------------------------------------------------------------
+
+    start_time = datetime.now()
+
+    print()
+    print("=" * 70)
+    print("PARAMETER STUDY STARTED")
+    print("=" * 70)
+    print(f"Start Time : {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
     # -------------------------------------------------------------------------
     # Load and normalize input once
@@ -1551,6 +1565,32 @@ def run_study(
     print(
         f"Configuration             : "
         f"{config_path}"
+    )
+    
+    # -------------------------------------------------------------------------
+    # End timing
+    # -------------------------------------------------------------------------
+
+    end_time = datetime.now()
+    elapsed = end_time - start_time
+
+    print()
+    print("=" * 70)
+    print("TIMING")
+    print("=" * 70)
+    print(f"Start Time : {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"End Time   : {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    days = elapsed.days
+    hours, remainder = divmod(elapsed.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    print(
+        f"Elapsed    : "
+        f"{days}d "
+        f"{hours:02d}h "
+        f"{minutes:02d}m "
+        f"{seconds:02d}s"
     )
 
     # -------------------------------------------------------------------------
