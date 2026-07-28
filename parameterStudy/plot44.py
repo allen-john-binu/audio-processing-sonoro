@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -6,154 +7,175 @@ import matplotlib.pyplot as plt
 
 
 # =============================================================================
-# PLOT PARAMETER STUDY RESULTS
+# CONFIGURATION
 # =============================================================================
 
-def plot_parameter_study(csv_path, output_path=None):
-    """
-    Plot four parameter-study metrics as a 2x2 grid of heatmaps.
-
-    Expected CSV columns:
-        normalizing_factor
-        h_b
-        v
-        beta
-        avg_number_of_bumps
-        avg_total_active_neurons
-        avg_bump_width
-        avg_largest_bump_width
-    """
-
-    # -------------------------------------------------------------------------
-    # Load results
-    # -------------------------------------------------------------------------
-
-    df = pd.read_csv(csv_path)
-
-    required_columns = [
-        "normalizing_factor",
-        "h_b",
-        "v",
-        "beta",
+METRICS = [
+    (
         "avg_number_of_bumps",
+        "Average Number of Bumps",
+    ),
+    (
         "avg_total_active_neurons",
+        "Average Total Active Neurons",
+    ),
+    (
         "avg_bump_width",
+        "Average Bump Width",
+    ),
+    (
         "avg_largest_bump_width",
-    ]
+        "Average Largest Bump Width",
+    ),
+]
 
-    missing = [
-        col for col in required_columns
-        if col not in df.columns
-    ]
+REQUIRED_COLUMNS = [
+    "normalizing_factor",
+    "h_b",
+    "v",
+    "beta",
+    "avg_number_of_bumps",
+    "avg_total_active_neurons",
+    "avg_bump_width",
+    "avg_largest_bump_width",
+]
 
-    if missing:
-        raise ValueError(
-            f"Missing required columns: {missing}"
-        )
 
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def format_parameter_for_filename(value):
+    """
+    Convert a parameter value into a clean, filename-safe string.
+
+    Examples:
+        0.3   -> "0.3"
+        50.0  -> "50"
+        1.25  -> "1.25"
+    """
+    if pd.isna(value):
+        return "nan"
+
+    try:
+        value = float(value)
+
+        if value.is_integer():
+            return str(int(value))
+
+        return f"{value:g}"
+
+    except (TypeError, ValueError):
+        return str(value).replace(" ", "_")
+
+
+def calculate_global_color_scales(df):
+    """
+    Calculate one global color scale per metric using the entire CSV.
+
+    Returns
+    -------
+    dict
+        {
+            metric_name: (global_min, global_max),
+            ...
+        }
+    """
+    global_scales = {}
+
+    print()
     print("=" * 70)
-    print("PARAMETER STUDY PLOT")
+    print("GLOBAL COLOR SCALES")
     print("=" * 70)
 
-    print(f"Input CSV          : {csv_path}")
-    print(f"Rows               : {len(df)}")
+    for metric, title in METRICS:
 
-    print(
-        "Normalizing factors:",
-        sorted(df["normalizing_factor"].unique())
-    )
+        values = pd.to_numeric(
+            df[metric],
+            errors="coerce",
+        )
 
-    print(
-        "h_b values         :",
-        sorted(df["h_b"].unique())
-    )
+        finite_values = values[
+            np.isfinite(values)
+        ]
 
-    print(
-        "v values           :",
-        sorted(df["v"].unique())
-    )
+        if finite_values.empty:
+            raise ValueError(
+                f"Metric '{metric}' contains no finite values."
+            )
 
-    print(
-        "beta values        :",
-        sorted(df["beta"].unique())
-    )
+        global_min = finite_values.min()
+        global_max = finite_values.max()
 
-    # -------------------------------------------------------------------------
-    # Check parameter grid
-    # -------------------------------------------------------------------------
-
-    n_nf = df["normalizing_factor"].nunique()
-    n_hb = df["h_b"].nunique()
-
-    expected_rows = n_nf * n_hb
-
-    if len(df) != expected_rows:
-        print()
-        print(
-            f"[WARNING] Found {len(df)} rows, but "
-            f"{n_nf} × {n_hb} = {expected_rows} "
-            f"parameter combinations are expected."
+        global_scales[metric] = (
+            global_min,
+            global_max,
         )
 
         print(
-            "This may indicate missing combinations, "
-            "duplicate rows, or multiple v/beta values."
+            f"{title:<35} "
+            f"min = {global_min:g}, "
+            f"max = {global_max:g}"
         )
 
-    # -------------------------------------------------------------------------
-    # Metrics to plot
-    # -------------------------------------------------------------------------
+    return global_scales
 
-    metrics = [
-        (
-            "avg_number_of_bumps",
-            "Average Number of Bumps"
-        ),
-        (
-            "avg_total_active_neurons",
-            "Average Total Active Neurons"
-        ),
-        (
-            "avg_bump_width",
-            "Average Bump Width"
-        ),
-        (
-            "avg_largest_bump_width",
-            "Average Largest Bump Width"
-        ),
-    ]
 
-    # -------------------------------------------------------------------------
-    # Create figure
-    # -------------------------------------------------------------------------
+# =============================================================================
+# PLOT ONE (v, beta) PAIR
+# =============================================================================
+
+def plot_single_parameter_pair(
+    subset,
+    v_value,
+    beta_value,
+    global_scales,
+    output_path,
+):
+    """
+    Create the four heatmaps for one (v, beta) pair.
+
+    X-axis:
+        normalizing_factor
+
+    Y-axis:
+        h_b
+
+    Color scales:
+        Fixed globally for each metric across the entire CSV.
+    """
 
     fig, axes = plt.subplots(
         2,
         2,
         figsize=(16, 13),
-        constrained_layout=True
+        constrained_layout=True,
     )
 
     axes = axes.flatten()
 
-    # -------------------------------------------------------------------------
-    # Plot each metric
-    # -------------------------------------------------------------------------
-
     for ax, (metric, title) in zip(
         axes,
-        metrics
+        METRICS,
     ):
 
-        # Create matrix:
+        # ---------------------------------------------------------------------
+        # Create heatmap matrix
         #
         # rows    = h_b
         # columns = normalizing_factor
         #
-        heatmap = df.pivot(
+        # pivot_table is used instead of pivot so duplicate combinations
+        # do not crash the script.
+        #
+        # If duplicates exist, their metric values are averaged.
+        # ---------------------------------------------------------------------
+
+        heatmap = subset.pivot_table(
             index="h_b",
             columns="normalizing_factor",
-            values=metric
+            values=metric,
+            aggfunc="mean",
         )
 
         # Sort both axes numerically ascending.
@@ -163,42 +185,73 @@ def plot_parameter_study(csv_path, output_path=None):
 
         heatmap = heatmap.sort_index(
             axis=1,
-            ascending=True
+            ascending=True,
         )
 
         x_values = heatmap.columns.to_numpy()
         y_values = heatmap.index.to_numpy()
 
-        data = heatmap.to_numpy()
+        data = heatmap.to_numpy(
+            dtype=float
+        )
 
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
+        # Global color scale for this metric
+        # ---------------------------------------------------------------------
+
+        global_min, global_max = (
+            global_scales[metric]
+        )
+
+        # If all values for a metric are identical, Matplotlib needs
+        # a non-zero color range.
+        if np.isclose(
+            global_min,
+            global_max,
+        ):
+            padding = (
+                abs(global_min) * 0.01
+                if global_min != 0
+                else 0.01
+            )
+
+            vmin = global_min - padding
+            vmax = global_max + padding
+
+        else:
+            vmin = global_min
+            vmax = global_max
+
+        # ---------------------------------------------------------------------
         # Heatmap
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
         image = ax.imshow(
             data,
             origin="lower",
             aspect="auto",
-            interpolation="nearest"
+            interpolation="nearest",
+            vmin=vmin,
+            vmax=vmax,
         )
 
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
         # Colorbar
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
         cbar = fig.colorbar(
             image,
-            ax=ax
+            ax=ax,
         )
 
         cbar.set_label(
             title,
-            fontsize=11
+            fontsize=11,
         )
 
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
         # Axis tick positions
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
         ax.set_xticks(
             np.arange(
@@ -212,98 +265,448 @@ def plot_parameter_study(csv_path, output_path=None):
             )
         )
 
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
         # Axis tick labels
-        # -------------------------------------------------------------
+        #
+        # Use general numeric formatting instead of fixed .2f so arbitrary
+        # parameter precision is preserved.
+        # ---------------------------------------------------------------------
 
         ax.set_xticklabels(
             [
-                f"{x:.2f}"
+                f"{x:g}"
                 for x in x_values
             ],
             rotation=45,
-            ha="right"
+            ha="right",
         )
 
         ax.set_yticklabels(
             [
-                f"{y:.2f}"
+                f"{y:g}"
                 for y in y_values
             ]
         )
 
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
         # Labels
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
         ax.set_xlabel(
             "NORMALIZING_FACTOR",
-            fontsize=12
+            fontsize=12,
         )
 
         ax.set_ylabel(
             "h_b",
-            fontsize=12
+            fontsize=12,
         )
 
         ax.set_title(
             title,
             fontsize=14,
-            fontweight="bold"
+            fontweight="bold",
         )
 
     # -------------------------------------------------------------------------
     # Main title
     # -------------------------------------------------------------------------
 
-    unique_v = df["v"].unique()
-    unique_beta = df["beta"].unique()
-
-    if (
-        len(unique_v) == 1
-        and len(unique_beta) == 1
-    ):
-
-        main_title = (
-            "Ring Attractor Parameter Study\n"
-            f"v = {unique_v[0]}, "
-            f"beta = {unique_beta[0]}"
-        )
-
-    else:
-
-        main_title = (
-            "Ring Attractor Parameter Study"
-        )
-
     fig.suptitle(
-        main_title,
+        (
+            "Ring Attractor Parameter Study\n"
+            f"v = {v_value:g}, "
+            f"beta = {beta_value:g}"
+        ),
         fontsize=18,
-        fontweight="bold"
+        fontweight="bold",
     )
 
     # -------------------------------------------------------------------------
-    # Save if requested
+    # Save PDF
     # -------------------------------------------------------------------------
 
-    if output_path:
+    fig.savefig(
+        output_path,
+        format="pdf",
+        bbox_inches="tight",
+    )
 
-        plt.savefig(
-            output_path,
-            dpi=300,
-            bbox_inches="tight"
+    # Important when generating many plots:
+    # release figure memory instead of calling plt.show().
+    plt.close(fig)
+
+
+# =============================================================================
+# MAIN PARAMETER STUDY PLOTTING FUNCTION
+# =============================================================================
+
+def plot_all_parameter_pairs(
+    csv_path,
+    output_dir,
+):
+    """
+    Generate one PDF for every existing (v, beta) pair in the CSV.
+
+    Each PDF contains four heatmaps over:
+
+        h_b x normalizing_factor
+
+    Each metric uses a global color scale calculated from the entire CSV.
+    """
+
+    # -------------------------------------------------------------------------
+    # Load CSV
+    # -------------------------------------------------------------------------
+
+    csv_path = Path(csv_path)
+    output_dir = Path(output_dir)
+
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"Input CSV does not exist:\n{csv_path}"
         )
+
+    df = pd.read_csv(
+        csv_path
+    )
+
+    # -------------------------------------------------------------------------
+    # Validate required columns
+    # -------------------------------------------------------------------------
+
+    missing = [
+        column
+        for column in REQUIRED_COLUMNS
+        if column not in df.columns
+    ]
+
+    if missing:
+        raise ValueError(
+            "Missing required columns:\n"
+            + "\n".join(
+                f"  - {column}"
+                for column in missing
+            )
+        )
+
+    if df.empty:
+        raise ValueError(
+            "The input CSV contains no rows."
+        )
+
+    # -------------------------------------------------------------------------
+    # Convert parameter/metric columns to numeric
+    # -------------------------------------------------------------------------
+
+    for column in REQUIRED_COLUMNS:
+
+        df[column] = pd.to_numeric(
+            df[column],
+            errors="coerce",
+        )
+
+    # -------------------------------------------------------------------------
+    # Remove rows without valid parameter identifiers
+    # -------------------------------------------------------------------------
+
+    invalid_parameter_rows = df[
+        [
+            "normalizing_factor",
+            "h_b",
+            "v",
+            "beta",
+        ]
+    ].isna().any(
+        axis=1
+    )
+
+    n_invalid = invalid_parameter_rows.sum()
+
+    if n_invalid > 0:
 
         print()
         print(
-            f"Saved plot → {output_path}"
+            f"[WARNING] Removing {n_invalid} rows "
+            "with invalid parameter values."
+        )
+
+        df = df.loc[
+            ~invalid_parameter_rows
+        ].copy()
+
+    if df.empty:
+        raise ValueError(
+            "No valid parameter rows remain "
+            "after numeric conversion."
         )
 
     # -------------------------------------------------------------------------
-    # Display
+    # Create output directory
     # -------------------------------------------------------------------------
 
-    plt.show()
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    # -------------------------------------------------------------------------
+    # Dataset summary
+    # -------------------------------------------------------------------------
+
+    unique_nf = np.sort(
+        df[
+            "normalizing_factor"
+        ].unique()
+    )
+
+    unique_hb = np.sort(
+        df[
+            "h_b"
+        ].unique()
+    )
+
+    unique_v = np.sort(
+        df[
+            "v"
+        ].unique()
+    )
+
+    unique_beta = np.sort(
+        df[
+            "beta"
+        ].unique()
+    )
+
+    print("=" * 70)
+    print("PARAMETER STUDY PDF GENERATOR")
+    print("=" * 70)
+
+    print(
+        f"Input CSV          : {csv_path}"
+    )
+
+    print(
+        f"Output directory   : {output_dir}"
+    )
+
+    print(
+        f"Total CSV rows     : {len(df)}"
+    )
+
+    print(
+        f"Normalizing factors: {len(unique_nf)}"
+    )
+
+    print(
+        f"h_b values         : {len(unique_hb)}"
+    )
+
+    print(
+        f"v values           : {len(unique_v)}"
+    )
+
+    print(
+        f"beta values        : {len(unique_beta)}"
+    )
+
+    # -------------------------------------------------------------------------
+    # Discover actual (v, beta) pairs from CSV
+    #
+    # We do NOT assume that the Cartesian product of unique v and beta
+    # necessarily exists.
+    # -------------------------------------------------------------------------
+
+    parameter_pairs = (
+        df[
+            [
+                "v",
+                "beta",
+            ]
+        ]
+        .drop_duplicates()
+        .sort_values(
+            [
+                "v",
+                "beta",
+            ]
+        )
+        .reset_index(
+            drop=True
+        )
+    )
+
+    print(
+        f"Existing (v, beta) pairs: "
+        f"{len(parameter_pairs)}"
+    )
+
+    # -------------------------------------------------------------------------
+    # Calculate GLOBAL scales before generating any plots
+    # -------------------------------------------------------------------------
+
+    global_scales = (
+        calculate_global_color_scales(
+            df
+        )
+    )
+
+    # -------------------------------------------------------------------------
+    # Check duplicates
+    # -------------------------------------------------------------------------
+
+    combination_columns = [
+        "normalizing_factor",
+        "h_b",
+        "v",
+        "beta",
+    ]
+
+    duplicate_mask = df.duplicated(
+        subset=combination_columns,
+        keep=False,
+    )
+
+    duplicate_count = (
+        duplicate_mask.sum()
+    )
+
+    if duplicate_count > 0:
+
+        print()
+        print(
+            "[WARNING] "
+            f"{duplicate_count} rows belong to duplicated "
+            "(normalizing_factor, h_b, v, beta) combinations."
+        )
+
+        print(
+            "Duplicate metric values will be averaged "
+            "within each heatmap cell."
+        )
+
+    # -------------------------------------------------------------------------
+    # Generate one PDF per existing (v, beta) pair
+    # -------------------------------------------------------------------------
+
+    print()
+    print("=" * 70)
+    print("GENERATING PDF FILES")
+    print("=" * 70)
+
+    generated_files = []
+
+    total_pairs = len(
+        parameter_pairs
+    )
+
+    for index, row in parameter_pairs.iterrows():
+
+        v_value = row["v"]
+        beta_value = row["beta"]
+
+        # ---------------------------------------------------------------------
+        # Select this exact parameter pair
+        # ---------------------------------------------------------------------
+
+        subset = df[
+            (df["v"] == v_value)
+            &
+            (df["beta"] == beta_value)
+        ].copy()
+
+        if subset.empty:
+
+            # This should not happen because pairs were discovered
+            # directly from the CSV, but keep the check for robustness.
+            print(
+                f"[WARNING] Empty subset for "
+                f"v={v_value:g}, "
+                f"beta={beta_value:g}. "
+                "Skipping."
+            )
+
+            continue
+
+        # ---------------------------------------------------------------------
+        # Filename
+        # ---------------------------------------------------------------------
+
+        v_string = (
+            format_parameter_for_filename(
+                v_value
+            )
+        )
+
+        beta_string = (
+            format_parameter_for_filename(
+                beta_value
+            )
+        )
+
+        filename = (
+            f"parameter_study_"
+            f"v_{v_string}_"
+            f"beta_{beta_string}.pdf"
+        )
+
+        output_path = (
+            output_dir
+            / filename
+        )
+
+        # ---------------------------------------------------------------------
+        # Progress
+        # ---------------------------------------------------------------------
+
+        print(
+            f"[{index + 1}/{total_pairs}] "
+            f"v = {v_value:g}, "
+            f"beta = {beta_value:g}"
+        )
+
+        print(
+            f"    rows : {len(subset)}"
+        )
+
+        print(
+            f"    file : {filename}"
+        )
+
+        # ---------------------------------------------------------------------
+        # Plot
+        # ---------------------------------------------------------------------
+
+        plot_single_parameter_pair(
+            subset=subset,
+            v_value=v_value,
+            beta_value=beta_value,
+            global_scales=global_scales,
+            output_path=output_path,
+        )
+
+        generated_files.append(
+            output_path
+        )
+
+    # -------------------------------------------------------------------------
+    # Final summary
+    # -------------------------------------------------------------------------
+
+    print()
+    print("=" * 70)
+    print("COMPLETE")
+    print("=" * 70)
+
+    print(
+        f"Generated PDFs : "
+        f"{len(generated_files)}"
+    )
+
+    print(
+        f"Saved in       : "
+        f"{output_dir.resolve()}"
+    )
 
 
 # =============================================================================
@@ -314,8 +717,9 @@ def parse_args():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Plot ring attractor parameter-study "
-            "metrics as four heatmaps."
+            "Generate one 4-panel parameter-study PDF "
+            "for every existing (v, beta) pair in a CSV, "
+            "using global per-metric color scales."
         )
     )
 
@@ -324,16 +728,16 @@ def parse_args():
         required=True,
         help=(
             "Path to parameter_study_results.csv"
-        )
+        ),
     )
 
     parser.add_argument(
-        "--output",
-        default=None,
+        "--output-dir",
+        default="parameter_study_plots",
         help=(
-            "Optional output image path, "
-            "e.g. parameter_study_heatmaps.png"
-        )
+            "Directory where PDF files will be saved. "
+            "Default: parameter_study_plots"
+        ),
     )
 
     return parser.parse_args()
@@ -347,7 +751,12 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    plot_parameter_study(
+    plot_all_parameter_pairs(
         csv_path=args.input,
-        output_path=args.output
+        output_dir=args.output_dir,
     )
+    
+    
+    # python plot44.py \
+    # --input ./ztParameterStudy1/parameter_study_results.csv \
+    # --output-dir ./ztParameterStudy1/parameter_study_pdfs

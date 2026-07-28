@@ -38,7 +38,7 @@ df = pd.read_csv("hi.csv")
 angles = np.array(df.columns[2:], dtype=float)
 
 # Single row of intensity values
-intensities = df.iloc[702, 2:].astype(float).values
+intensities = df.iloc[27, 2:].astype(float).values
 
 
 # ============================================================
@@ -76,21 +76,19 @@ fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
 
 # (a) Original DOA intensity
 axes[0].plot(angles, intensities, marker="o", color="blue")
-axes[0].set_xlabel("Angle (°)")
-axes[0].set_ylabel("Intensity")
-axes[0].set_title("(a) Original DOA intensity")
+axes[0].set_xlabel("Angle of arrival (°)")
+axes[0].set_ylabel("Sound Intensity")
+axes[0].set_ylim(0, 0.000007)
 
 # (b) Min-max normalized intensity
 axes[1].plot(angles, normalized, marker="o", color="red")
 axes[1].set_xlabel("Angle (°)")
-axes[1].set_ylabel("Normalized intensity")
-axes[1].set_title("(b) Min-max normalization")
+axes[1].set_ylabel("Normalized Sound Intensity")
 
 # (c) Final ring attractor input
 axes[2].plot(full_angles, ring_input, marker="o", color="green")
 axes[2].set_xlabel("Angle (°)")
-axes[2].set_ylabel("External input")
-axes[2].set_title("(c) Ring attractor input")
+axes[2].set_ylabel("External Input to Ring Attractor")
 
 
 # Improve spacing

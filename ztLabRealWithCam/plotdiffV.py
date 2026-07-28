@@ -28,22 +28,45 @@ INPUT_DIR = "./mergedData/"
 OUTPUT_DIR = "./mergedData/BatchPlots/"
 
 # Only files whose name starts with this are included, e.g. "16_07_E"
-FILE_PREFIX = "16_07_E"
+FILE_PREFIX = "09_07_A"
 
 # Output plot filename (saved inside OUTPUT_DIR)
-OUTPUT_NAME = "16_07_E_all_batches.png"
+OUTPUT_NAME = "09_07_A_all_batches.png"
 
-# Color assigned to each batch. Add/edit entries if you have more batches.
+# Color assigned to each batch.
 BATCH_COLORS = {
-    "EA": "tab:blue",
-    "EB": "tab:orange",
-    "EC": "tab:green",
-    "ED": "tab:red",
+    "AA": "tab:blue",
+    "AB": "tab:orange",
+    "AD": "tab:green",
+    "AE": "tab:red",
+}
+
+{
+    "AA": "blue",
+    "AB": "orange",
+    "AD": "green",
+    "AE": "red",
+    "CA": "blue",
+    "CB": "orange",
+    "CC": "green",
+    "CD": "red",
+    "DA": "blue",
+    "DB": "orange",
+    "DC": "green",
+    "DD": "red",
+}
+
+# Velocity corresponding to each batch (used in legend)
+BATCH_V = {
+    "AA": 0,
+    "AB": 0.05,
+    "AD": 0.1,
+    "AE": 0.15,
 }
 # ------------------------------------------------------------------ #
 
 # Matches e.g. "16_07_EA_01.csv" -> batch="EA", index="01"
-FILENAME_RE = re.compile(r"^16_07_(?P<batch>[A-Z]+)_(?P<index>\d{2})\.csv$")
+FILENAME_RE = re.compile(r"^09_07_(?P<batch>[A-Z]+)_(?P<index>\d{2})\.csv$")
 
 
 def collect_files(input_dir: str, file_prefix: str):
@@ -57,6 +80,8 @@ def collect_files(input_dir: str, file_prefix: str):
             print(f"Skipping file that doesn't match naming pattern: {filename}")
             continue
         batch = m.group("batch")
+        if int(m.group("index")) > 5:
+            continue
         batches.setdefault(batch, []).append(filepath)
     return batches
 
@@ -72,7 +97,7 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
         color = BATCH_COLORS.get(batch)
         if color is None:
             print(f"Warning: no color defined for batch '{batch}', using default cycle.")
-
+            continue
         first_line_for_batch = True
         for filepath in batches[batch]:
             try:
@@ -87,16 +112,28 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
 
             # Only label the first line of each batch so the legend shows
             # one entry per batch instead of one per file.
-            label = batch if first_line_for_batch else None
-            first_line_for_batch = False
+            if first_line_for_batch:
+                if batch in BATCH_V:
+                    label = f"d = {BATCH_V[batch]}"
+                else:
+                    label = batch
+                first_line_for_batch = False
+            else:
+                label = None
 
-            ax.plot(df["robot_x"], df["robot_y"],
-                    color=color, linewidth=1, alpha=0.8, label=label)
+            ax.plot(
+                df["robot_x"],
+                df["robot_y"],
+                color=color,
+                linewidth=1,
+                alpha=0.8,
+                label=label,
+            )
 
-    ax.set_title("16_07_E* trajectories by batch")
+    ax.set_title("Trajectories for different difference of volume of two speakers")
     ax.set_xlabel("robot_x")
     ax.set_ylabel("robot_y")
-    ax.legend(title="Batch", fontsize=9, loc="best")
+    ax.legend(title="d, difference of volume of two speakers", fontsize=9, loc="best")
     ax.set_aspect("equal", adjustable="box")
     fig.tight_layout()
 

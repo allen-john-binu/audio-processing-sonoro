@@ -64,6 +64,30 @@
             font-family: var(--mono);
         }
 
+        .mode-toggle {
+            margin-left: auto;
+            display: flex;
+            gap: 4px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 3px;
+        }
+        .mode-btn {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            padding: 5px 12px;
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+        .mode-btn:hover { color: var(--text); }
+        .mode-btn.active { background: var(--accent); color: #0d1117; font-weight: 600; }
+
         .dual-chart {
 
             display: flex;
@@ -235,6 +259,9 @@
             background: rgba(88, 166, 255, 0.07);
         }
 
+        .badge.green  { color: #3fb950; border-color: rgba(63,185,80,0.3);  background: rgba(63,185,80,0.07); }
+        .badge.yellow { color: #d29922; border-color: rgba(210,153,34,0.3); background: rgba(210,153,34,0.07); }
+
         .chart-wrap {
             padding: 8px;
         }
@@ -399,6 +426,10 @@
     <header>
         <h1>⬡ robot·doa·viz</h1>
         <span class="subtitle">direction-of-arrival · path visualizer</span>
+        <div class="mode-toggle" id="mode-toggle">
+            <button class="mode-btn active" data-mode="sound">Sound</button>
+            <button class="mode-btn" data-mode="doa">DOA</button>
+        </div>
     </header>
 
     <div class="layout">
@@ -426,13 +457,10 @@
                     </span>
 
                     <div class="meta-badges">
-                        <span class="badge red">
-                            ● phi (invalid/no-signal)
-                        </span>
-
-                        <span class="badge blue">
-                            ● phi (click for DOA)
-                        </span>
+                        <span class="badge red">● phi (invalid/no-signal)</span>
+                        <span class="badge blue">● right vol &gt; left vol</span>
+                        <span class="badge green">● left vol &gt; right vol</span>
+                        <span class="badge yellow">● left vol = right vol</span>
                     </div>
                 </div>
 
@@ -484,6 +512,7 @@
     </div>
 
     <script>
+        let colorMode = "sound"; // "sound" | "doa"
         // ── Helpers ──────────────────────────────────────────────────────────────────
 
         function showLoading(msg = "Loading…") {
@@ -505,6 +534,45 @@
             }
             return modeVal;
         }
+
+        // Mirrors the angle mapping already used in renderDOAChart
+        function doaPeakAngle(row) {
+            const doaCols = Object.keys(row)
+                .filter(c => c.startsWith("doa_"))
+                .sort((a, b) => Number(a.slice(4)) - Number(b.slice(4)));
+            const N = doaCols.length;
+            const yVals = doaCols.map(c => Number(row[c]));
+            const peakIdx = yVals.indexOf(Math.max(...yVals));
+            return -180 + peakIdx * 360 / (N - 1);
+        }
+
+        function updateLegendBadges() {
+            const container = document.querySelector("#path-card .meta-badges");
+            if (colorMode === "doa") {
+                container.innerHTML = `
+                    <span class="badge red">● phi (invalid/no-signal)</span>
+                    <span class="badge blue">● doa peak angle &lt; 0°</span>
+                    <span class="badge green">● doa peak angle &gt; 0°</span>
+                    <span class="badge yellow">● doa peak angle = 0°</span>`;
+            } else {
+                container.innerHTML = `
+                    <span class="badge red">● phi (invalid/no-signal)</span>
+                    <span class="badge blue">● right vol &gt; left vol</span>
+                    <span class="badge green">● left vol &gt; right vol</span>
+                    <span class="badge yellow">● left vol = right vol</span>`;
+            }
+        }
+
+        document.querySelectorAll(".mode-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                colorMode = btn.dataset.mode;
+                updateLegendBadges();
+            });
+        });
+
+        updateLegendBadges(); 
 
         // Parse CSV text using PapaParse
         function parseCSV(text) {
@@ -554,58 +622,14 @@
 
         let trajectoryHighlight = null;
 
-        function highlightTrajectory(idx) {
-            const row = validRows[idx];
-
-            Plotly.restyle(
-                "path-chart",
-                {
-
-                    x: [[row.robot_x]],
-                    y: [[row.robot_y]]
-
-                },
-
-                5
-            );
+        function highlightTrajectory(row) {
+            Plotly.restyle("path-chart", { x: [[row.robot_x]], y: [[row.robot_y]] }, 7); // index 7 per the earlier trace-count fix
         }
 
-        function highlightHeatmap(idx) {
-            const t = validRows[idx].time_step;
-
-            Plotly.relayout(
-                "spin-chart",
-
-                {
-
-                    shapes: [
-
-                        {
-
-                            type: "line",
-
-                            x0: t,
-                            x1: t,
-
-                            y0: -180,
-                            y1: 180,
-
-                            line: {
-
-                                color: "red",
-
-                                width: 2
-
-                            }
-
-                        }
-
-                    ]
-
-                }
-
-            );
-        }
+        function highlightHeatmap(row) {
+                const t = row.time_step;
+                Plotly.relayout("spin-chart", { shapes: [{ type: "line", x0: t, x1: t, y0: -180, y1: 180, line: { color: "red", width: 2 } }] });
+            }
 
         async function loadCSV(filename) {
             showLoading(`Parsing ${filename}…`);
@@ -709,8 +733,27 @@
             document.getElementById("doa-panel").classList.remove("visible");
 
             // Separate valid (blue) and invalid (red) points
-            const blueRows = rows.filter(r => r.phi_in_degrees !== -500);
             const redRows = rows.filter(r => r.phi_in_degrees === -500);
+            const goodRows = rows.filter(r => r.phi_in_degrees !== -500);
+
+            let group1Rows, group2Rows, group3Rows, g1Name, g2Name, g3Name;
+
+            if (colorMode === "doa") {
+                group1Rows = goodRows.filter(r => doaPeakAngle(r) < 0);
+                group2Rows = goodRows.filter(r => doaPeakAngle(r) > 0);
+                group3Rows = goodRows.filter(r => doaPeakAngle(r) === 0);
+                g1Name = "doa peak angle < 0°";
+                g2Name = "doa peak angle > 0°";
+                g3Name = "doa peak angle = 0°";
+            } else {
+                group1Rows = goodRows.filter(r => r.right_volume > r.left_volume);
+                group2Rows = goodRows.filter(r => r.right_volume < r.left_volume);
+                group3Rows = goodRows.filter(r => r.right_volume === r.left_volume);
+                g1Name = "right vol > left vol";
+                g2Name = "left vol > right vol";
+                g3Name = "left vol = right vol";
+            }
+
 
             // Speaker positions via mode
             const slx = mode(rows.map(r => r.speakerL_x));
@@ -749,16 +792,44 @@
             };
 
             // Blue points (phi ≠ -500) — clickable
-            const blueTrace = {
-                x: blueRows.map(r => r.robot_x),
-                y: blueRows.map(r => r.robot_y),
+            const rightHigherTrace = {
+                x: group1Rows.map(r => r.robot_x),
+                y: group1Rows.map(r => r.robot_y),
                 mode: "markers",
                 marker: {
                     color: "#58a6ff", size: 9, symbol: "circle",
                     line: { color: "#0d1117", width: 0.5 }
                 },
-                name: "phi ≠ −500 (click for DOA)",
-                customdata: blueRows.map(r => r),
+                name: g1Name,
+                customdata: group1Rows.map(r => r),
+                hovertemplate:
+                    "<b>step %{customdata.time_step}</b><br>" +
+                    "x: %{x:.1f}  y: %{y:.1f}<br>" +
+                    "phi: %{customdata.phi_in_degrees:.2f}°<br>" +
+                    "<i>click to view DOA</i><extra></extra>",
+            };
+
+            const leftHigherTrace = {
+                x: group2Rows.map(r => r.robot_x),
+                y: group2Rows.map(r => r.robot_y),
+                mode: "markers",
+                marker: { color: "#3fb950", size: 9, symbol: "circle", line: { color: "#0d1117", width: 0.5 } },
+                name: g2Name,
+                customdata: group2Rows.map(r => r),
+                hovertemplate:
+                    "<b>step %{customdata.time_step}</b><br>" +
+                    "x: %{x:.1f}  y: %{y:.1f}<br>" +
+                    "phi: %{customdata.phi_in_degrees:.2f}°<br>" +
+                    "<i>click to view DOA</i><extra></extra>",
+            };
+
+            const equalVolTrace = {
+                x: group3Rows.map(r => r.robot_x),
+                y: group3Rows.map(r => r.robot_y),
+                mode: "markers",
+                marker: { color: "#d29922", size: 9, symbol: "circle", line: { color: "#0d1117", width: 0.5 } },
+                name: g3Name,
+                customdata: group3Rows.map(r => r),
                 hovertemplate:
                     "<b>step %{customdata.time_step}</b><br>" +
                     "x: %{x:.1f}  y: %{y:.1f}<br>" +
@@ -852,20 +923,16 @@
                 responsive: true,
             };
 
-            Plotly.react("path-chart", [pathLine, redTrace, blueTrace, speakerL, speakerR, selectedPoint], layout, config);
+            Plotly.react("path-chart", [pathLine, redTrace, rightHigherTrace, leftHigherTrace, equalVolTrace, speakerL, speakerR, selectedPoint], layout, config);
 
             // ── Click handler for blue points ─────────────────────────────────────────
             document.getElementById("path-chart").on("plotly_click", function (data) {
                 const pt = data.points[0];
-                // Only react to the blue trace (index 2 in our traces array)
-                if (pt.curveNumber !== 2) return;
+                if (pt.curveNumber < 2 || pt.curveNumber > 4) return;
                 const row = pt.customdata;
                 renderDOAChart(row);
-                renderDOAChart(row);
-
-                highlightTrajectory(pt.pointIndex);
-
-                highlightHeatmap(pt.pointIndex);
+                highlightTrajectory(row);   // was: highlightTrajectory(pt.pointIndex)
+                highlightHeatmap(row);      // was: highlightHeatmap(pt.pointIndex)
             });
         }
 
@@ -981,20 +1048,13 @@
 
             );
 
-            document.getElementById("spin-chart")
-                .on("plotly_click", function (data) {
-
-                    const point = data.points[0];
-
-                    const idx = point.pointNumber[1];
-
-                    const row = validRows[idx];
-
-                    renderDOAChart(row);
-
-                    highlightTrajectory(idx);
-
-                });
+            document.getElementById("spin-chart").on("plotly_click", function (data) {
+                const point = data.points[0];
+                const idx = point.pointNumber[1];
+                const row = validRows[idx];
+                renderDOAChart(row);
+                highlightTrajectory(row);   // was: highlightTrajectory(idx)
+            });
 
         }
 
