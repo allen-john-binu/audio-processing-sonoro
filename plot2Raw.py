@@ -148,9 +148,9 @@ scatter2 = ax.scatter(time_steps, peak2, color="lime", s=20, label="Peak 2")
 # -----------------------------
 # 8. Labels
 # -----------------------------
-ax.set_xlabel("Time Step (Filtered)")
+ax.set_xlabel("Time Step")
 ax.set_ylabel("Angle (degrees)")
-ax.set_title("DOA with SPL Filtering (Compressed Time) of file: " + csv_path.name)
+ax.set_title("DOA Dataset")
 
 cbar = plt.colorbar(im, ax=ax)
 cbar.set_label("Intensity")

@@ -28,45 +28,45 @@ INPUT_DIR = "./mergedData/"
 OUTPUT_DIR = "./mergedData/BatchPlots/"
 
 # Only files whose name starts with this are included, e.g. "16_07_E"
-FILE_PREFIX = "09_07_A"
+FILE_PREFIX = "14_07_D"
 
 # Output plot filename (saved inside OUTPUT_DIR)
-OUTPUT_NAME = "09_07_A_all_batches.png"
+OUTPUT_NAME = "14_07_D_all_batches.png"
 
 # Color assigned to each batch.
 BATCH_COLORS = {
-    "AA": "tab:blue",
-    "AB": "tab:orange",
-    "AD": "tab:green",
-    "AE": "tab:red",
-}
-
-{
-    "AA": "blue",
-    "AB": "orange",
-    "AD": "green",
-    "AE": "red",
-    "CA": "blue",
-    "CB": "orange",
-    "CC": "green",
-    "CD": "red",
     "DA": "blue",
     "DB": "orange",
     "DC": "green",
     "DD": "red",
 }
 
+# {
+#     "AA": "blue",
+#     "AB": "orange",
+#     "AD": "green",
+#     "AE": "red",
+#     "CA": "blue",
+#     "CB": "orange",
+#     "CC": "green",
+#     "CD": "red",
+#     "DA": "blue",
+#     "DB": "orange",
+#     "DC": "green",
+#     "DD": "red",
+# }
+
 # Velocity corresponding to each batch (used in legend)
 BATCH_V = {
-    "AA": 0,
-    "AB": 0.05,
-    "AD": 0.1,
-    "AE": 0.15,
+    "DA": 0.025,
+    "DB": 0.05,
+    "DC": 0.10,
+    "DD": 0.15,
 }
 # ------------------------------------------------------------------ #
 
 # Matches e.g. "16_07_EA_01.csv" -> batch="EA", index="01"
-FILENAME_RE = re.compile(r"^09_07_(?P<batch>[A-Z]+)_(?P<index>\d{2})\.csv$")
+FILENAME_RE = re.compile(r"^14_07_(?P<batch>[A-Z]+)_(?P<index>\d{2})\.csv$")
 
 
 def collect_files(input_dir: str, file_prefix: str):
@@ -114,7 +114,7 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
             # one entry per batch instead of one per file.
             if first_line_for_batch:
                 if batch in BATCH_V:
-                    label = f"d = {BATCH_V[batch]}"
+                    label = f"sd = {BATCH_V[batch]}"
                 else:
                     label = batch
                 first_line_for_batch = False
@@ -130,10 +130,10 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
                 label=label,
             )
 
-    ax.set_title("Trajectories for different difference of volume of two speakers")
+    ax.set_title("Trajectories for different standard deviation of the Gaussian noise")
     ax.set_xlabel("robot_x")
     ax.set_ylabel("robot_y")
-    ax.legend(title="d, difference of volume of two speakers", fontsize=9, loc="best")
+    ax.legend(title="sd, standard deviation of the Gaussian noise", fontsize=9, loc="best")
     ax.set_aspect("equal", adjustable="box")
     fig.tight_layout()
 

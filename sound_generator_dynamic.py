@@ -16,15 +16,17 @@ all_sweeps = []
 
 durn = 5e-3  # 5 ms
 
+wait_time = 0.1  # seconds
+
 t = np.linspace(0, durn, int(fs * durn), endpoint=False)
-sweep = signal.chirp(t, 2000, t[-1], 24000)
+sweep = signal.chirp(t, 100, t[-1], 2900)
 sweep *= signal.windows.tukey(len(sweep), 0.2)
 sweep *= 0.8
-sweep = np.pad(sweep, (int(fs * 0.1), int(fs * 0.1)))
+sweep = np.pad(sweep, (int(fs * wait_time), int(fs * wait_time)))
 
 sweeps_combined = sweep
 
-target_duration = 100  # seconds
+target_duration = 300  # seconds
 repeats = int(np.ceil(target_duration / (len(sweeps_combined) / fs)))
 long_signal = np.tile(sweeps_combined, repeats)
 long_signal = long_signal[:int(fs * target_duration)]
@@ -97,8 +99,8 @@ stereo_signal = np.column_stack((
 # CSV setup
 # =========================
 # Hardcoded folders
-OUTPUT_DIR = "checkLabsWithFoam/dataFromSound"  
-EMPTY_COPY_DIR = "checkLabsWithFoam/dataFromReal" 
+OUTPUT_DIR = "findEqualWithFoamRing/datacollection/dataFromSound"  
+EMPTY_COPY_DIR = "findEqualWithFoamRing/datacollection/" 
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(EMPTY_COPY_DIR, exist_ok=True)
@@ -211,7 +213,7 @@ finally:
     else:
         print("Plot-only mode: no files saved.")
     
-        # =========================
+    # =========================
     # Plot saved volume data
     # =========================
     if csv_rows:
@@ -229,5 +231,6 @@ finally:
         plt.ylim(0, 1.2)   # always show 0 to 1.2 seconds
         plt.grid(True)
         plt.legend()
+        print("Plot saved.")
         plt.savefig("noise_modulation.pdf", bbox_inches="tight")
         plt.show()

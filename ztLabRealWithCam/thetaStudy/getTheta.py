@@ -15,6 +15,10 @@ Line map model
     C = raw trajectory end point   (last row's robot_x/robot_y, as-is)
     B = estimated turning/corner point
 
+Reconstruct robot trajectories (batch 1 only, files 01-05) as a fixed
+A -> B -> C two-segment line map (Total Least Squares / PCA line fitting
+with breakpoint search), and pair each file's reconstruction with the
+mode of its noisy speaker (L/R) position data.
 To find B, the ordered trajectory points are split at a breakpoint index k.
 A TLS (PCA) line is fit to the points before k and another to the points
 from k onward. We search over all valid k and keep the one that minimizes
