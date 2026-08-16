@@ -19,7 +19,7 @@ durn = 5e-3  # 5 ms
 wait_time = 0.1  # seconds
 
 t = np.linspace(0, durn, int(fs * durn), endpoint=False)
-sweep = signal.chirp(t, 100, t[-1], 2900)
+sweep = signal.chirp(t, 2000, t[-1], 24000)
 sweep *= signal.windows.tukey(len(sweep), 0.2)
 sweep *= 0.8
 sweep = np.pad(sweep, (int(fs * wait_time), int(fs * wait_time)))
@@ -85,7 +85,7 @@ long_signal = long_signal[:int(fs * target_duration)]
 # =========================
 base_left = 1.0
 
-base_right = 1.0
+base_right = 0.65
 
 left_volumes = np.full(len(long_signal), base_left)
 right_volumes = np.full(len(long_signal), base_right)
@@ -99,11 +99,15 @@ stereo_signal = np.column_stack((
 # CSV setup
 # =========================
 # Hardcoded folders
-OUTPUT_DIR = "findEqualWithFoamRing/datacollection/dataFromSound"  
-EMPTY_COPY_DIR = "findEqualWithFoamRing/datacollection/" 
+OUTPUT_DIR = "zLabRealWithCam/dataFromSound/"  
+EMPTY_COPY_DIR = "zLabRealWithCam/dataFromReal/" 
+EMPTY_COPY_DIR_1 = "zLabRealWithCam/dataFromVicon/" 
+EMPTY_COPY_DIR_2 = "zLabRealWithCam/dataFromRing/" 
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(EMPTY_COPY_DIR, exist_ok=True)
+os.makedirs(EMPTY_COPY_DIR_1, exist_ok=True)
+os.makedirs(EMPTY_COPY_DIR_2, exist_ok=True)
 
 if len(sys.argv) < 2:
     print("Usage: python script.py <filename> [--plot-only]")
@@ -117,6 +121,8 @@ if not filename.lower().endswith(".csv"):
 
 csv_filename = os.path.join(OUTPUT_DIR, filename)
 empty_csv_filename = os.path.join(EMPTY_COPY_DIR, filename)
+empty_csv_filename1 = os.path.join(EMPTY_COPY_DIR_1, filename)
+empty_csv_filename2 = os.path.join(EMPTY_COPY_DIR_2, filename)
 
 csv_rows = []
 csv_sample_interval = 1920  # 10 ms
@@ -206,9 +212,13 @@ finally:
         print(f"Total rows: {len(csv_rows)}")
 
         with open(empty_csv_filename, 'w', newline='') as f:
+            pass        
+        with open(empty_csv_filename1, 'w', newline='') as f:
+            pass      
+        with open(empty_csv_filename2, 'w', newline='') as f:
             pass
 
-        print(f"Empty CSV created: {empty_csv_filename}")
+        print(f"Empty CSV created: {empty_csv_filename,empty_csv_filename1,empty_csv_filename2}")
 
     else:
         print("Plot-only mode: no files saved.")

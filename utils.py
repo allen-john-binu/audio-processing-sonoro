@@ -66,7 +66,7 @@ def plot_summary_no_target(ring,pos_alloc,pos_ego,spins_history,bump_angles,L):
     ax_raster.set_ylabel("unit index")
     ax_raster.set_xlabel("time step")
     time_axis = np.arange(L) 
-    # ax_raster.plot(time_axis, bump_angles, color='red', linewidth=2, label='bump angle')
+    ax_raster.plot(time_axis, bump_angles, color='red', linewidth=2, label='bump angle')
 
     # Add legend (colorbar)
     cbar = plt.colorbar(im, ax=ax_raster, ticks=[0, 1])

@@ -125,7 +125,10 @@ colors = ["red" if np.isnan(v) else "blue" for v in intensity_diffs]
 
 scatter_diff = ax_diff.scatter(time_steps, intensity_plot, c=colors, s=20)
 
-ax_diff.set_title("Peak Intensity Difference ")
+valid_diffs = intensity_diffs[~np.isnan(intensity_diffs)]
+mean_diff = np.mean(valid_diffs) if len(valid_diffs) > 0 else np.nan
+
+ax_diff.set_title(f"Peak Intensity Difference (Mean: {mean_diff:.2f})")
 ax_diff.set_xlabel("Time Step")
 ax_diff.set_ylabel("|Peak1 - Peak2|")
 
@@ -185,6 +188,10 @@ def update(val):
     im.set_extent([-0.5, len(time_steps) - 0.5, y_min, y_max])
 
     # Update scatter
+    valid_diffs = intensity_diffs[~np.isnan(intensity_diffs)]
+    mean_diff = np.mean(valid_diffs) if len(valid_diffs) > 0 else np.nan
+
+    ax_diff.set_title(f"Peak Intensity Difference (Mean: {mean_diff:.2f})")
 
     # Update peaks
     scatter1.set_offsets(np.c_[time_steps, peak1])

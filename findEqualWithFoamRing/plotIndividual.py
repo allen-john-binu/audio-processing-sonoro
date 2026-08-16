@@ -10,7 +10,7 @@ from scipy.signal import find_peaks
 # Configuration
 # ============================================================
 
-filename = "./datacollection/dataFromSound/doa_log_20251119_newfr_fast.csv"
+filename = "../hi.csv"
 
 PROMINENCE = 0.05
 DISTANCE = 5
