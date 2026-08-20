@@ -28,17 +28,18 @@ INPUT_DIR = "./mergedData/"
 OUTPUT_DIR = "./mergedData/BatchPlots/"
 
 # Only files whose name starts with this are included, e.g. "16_07_E"
-FILE_PREFIX = "14_07_D"
+FILE_PREFIX = "09_07_A"
 
 # Output plot filename (saved inside OUTPUT_DIR)
-OUTPUT_NAME = "14_07_D_all_batches.png"
+OUTPUT_NAME = "09_07_A_all_batches.pdf"
 
 # Color assigned to each batch.
 BATCH_COLORS = {
-    "DA": "blue",
-    "DB": "orange",
-    "DC": "green",
-    "DD": "red",
+    "AA": "blue",
+    "AB": "orange",
+    "AC":"green",
+    "AD": "purple",
+    "AE": "red",
 }
 
 # {
@@ -58,15 +59,16 @@ BATCH_COLORS = {
 
 # Velocity corresponding to each batch (used in legend)
 BATCH_V = {
-    "DA": 0.025,
-    "DB": 0.05,
-    "DC": 0.10,
-    "DD": 0.15,
+    "AA": 0.0,
+    "AB": 0.05,
+    "AC": 0.1,
+    "AD": 0.15,
+    "AE": 0.2,
 }
 # ------------------------------------------------------------------ #
 
 # Matches e.g. "16_07_EA_01.csv" -> batch="EA", index="01"
-FILENAME_RE = re.compile(r"^14_07_(?P<batch>[A-Z]+)_(?P<index>\d{2})\.csv$")
+FILENAME_RE = re.compile(r"^09_07_(?P<batch>[A-Z]+)_(?P<index>\d{2})\.csv$")
 
 
 def collect_files(input_dir: str, file_prefix: str):
@@ -114,7 +116,7 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
             # one entry per batch instead of one per file.
             if first_line_for_batch:
                 if batch in BATCH_V:
-                    label = f"sd = {BATCH_V[batch]}"
+                    label = f"d = {BATCH_V[batch]}"
                 else:
                     label = batch
                 first_line_for_batch = False
@@ -130,16 +132,18 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
                 label=label,
             )
 
-    ax.set_title("Trajectories for different standard deviation of the Gaussian noise")
+    ax.set_title("Trajectories for different difference of volume ratio of the two speakers")
     ax.set_xlabel("robot_x")
     ax.set_ylabel("robot_y")
-    ax.legend(title="sd, standard deviation of the Gaussian noise", fontsize=9, loc="best")
+    ax.legend(title="d, difference of volume ratio of the two speakers", fontsize=9, loc="best")
     ax.set_aspect("equal", adjustable="box")
     fig.tight_layout()
 
     os.makedirs(output_dir, exist_ok=True)
     out_path = os.path.join(output_dir, output_name)
-    fig.savefig(out_path, dpi=150)
+    fig.savefig(out_path, dpi=150,
+            format="pdf",
+            bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {out_path}")
 
