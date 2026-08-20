@@ -18,12 +18,12 @@ import qtm
 QTM_ADDRESS = "10.126.17.54"
 PASSWORD = "robot609"
 
-SAVE_DIR = "ztLabRealWithCam/dataFromQualis"   # <-- change as needed
-EMPTY_COPY_DIR = "ztLabRealWithCam/dataFromRing" 
+SAVE_DIR = "ztFinalLabRealWithCam/dataFromQualis"   # <-- change as needed
+EMPTY_COPY_DIR = "ztFinalLabRealWithCam/dataFromRing" 
 
 
 BODY_NAMES = {
-    "robat": "robot",
+    "sonoRo": "sonoRo",
     "speakerL": "speakerL",
     "speakerR": "speakerR",
 }
@@ -50,7 +50,7 @@ def plot_trajectories(trajectory):
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
-    body_names = ["robot", "speakerL", "speakerR"]
+    body_names = ["sonoRo", "speakerL", "speakerR"]
 
     for ax, body in zip(axes, body_names):
 
@@ -115,7 +115,7 @@ async def collect_data(output_csv,empty_csv_filename):
     last_report_time = time.time()
     
     trajectory = {
-    "robot": {"t": [], "x": [], "y": []},
+    "sonoRo": {"t": [], "x": [], "y": []},
     "speakerL": {"t": [], "x": [], "y": []},
     "speakerR": {"t": [], "x": [], "y": []},
 }
@@ -125,8 +125,8 @@ async def collect_data(output_csv,empty_csv_filename):
 
     writer.writerow([
         "timestamp",
-        "robot_x",
-        "robot_y",
+        "sonoRo_x",
+        "sonoRo_y",
         "speakerL_x",
         "speakerL_y",
         "speakerR_x",
@@ -156,8 +156,8 @@ async def collect_data(output_csv,empty_csv_filename):
         info, bodies = packet.get_6d_euler()
 
         row = {
-            "robot_x": np.nan,
-            "robot_y": np.nan,
+            "sonoRo_x": np.nan,
+            "sonoRo_y": np.nan,
             "speakerL_x": np.nan,
             "speakerL_y": np.nan,
             "speakerR_x": np.nan,
@@ -188,8 +188,8 @@ async def collect_data(output_csv,empty_csv_filename):
 
         writer.writerow([
             iso_timestamp,
-            row["robot_x"],
-            row["robot_y"],
+            row["sonoRo_x"],
+            row["sonoRo_y"],
             row["speakerL_x"],
             row["speakerL_y"],
             row["speakerR_x"],

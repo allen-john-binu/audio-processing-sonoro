@@ -216,7 +216,7 @@ def main():
     rows = []
 
     for prefix, files_by_index in sorted(groups.items()):
-        batch1 = {i: fp for i, fp in files_by_index.items() if 1 <= i <= 5}
+        batch1 = {i: fp for i, fp in files_by_index.items() if 1 <= i <= 8}
         for index in sorted(batch1.keys()):
             row = process_file(batch1[index])
             if row is not None:

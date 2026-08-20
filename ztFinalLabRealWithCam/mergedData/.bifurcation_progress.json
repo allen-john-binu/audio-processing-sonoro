@@ -1,0 +1,252 @@
+{
+  "18_08_AA_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      34,
+      35,
+      36,
+      37,
+      38
+    ]
+  },
+  "18_08_AA_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      32,
+      31,
+      30,
+      29,
+      28
+    ]
+  },
+  "18_08_AA_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AA_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      36,
+      35,
+      34,
+      33,
+      32
+    ]
+  },
+  "18_08_AA_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      34,
+      33,
+      32,
+      31,
+      30
+    ]
+  },
+  "18_08_AB_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AB_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      36,
+      35,
+      34,
+      33,
+      32
+    ]
+  },
+  "18_08_AB_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      36,
+      35,
+      34,
+      33,
+      32
+    ]
+  },
+  "18_08_AB_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AB_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AC_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AC_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AC_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      36,
+      35,
+      34,
+      33,
+      32
+    ]
+  },
+  "18_08_AC_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AC_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AD_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AD_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AD_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      38,
+      37,
+      36,
+      35,
+      34
+    ]
+  },
+  "18_08_AD_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AD_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      37,
+      36,
+      35,
+      34,
+      33
+    ]
+  },
+  "18_08_AE_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      33,
+      32,
+      31,
+      30,
+      29
+    ]
+  },
+  "18_08_AE_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      38,
+      37,
+      36,
+      35,
+      34
+    ]
+  },
+  "18_08_AE_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      36,
+      35,
+      34,
+      33,
+      32
+    ]
+  },
+  "18_08_AE_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      38,
+      37,
+      36,
+      35,
+      34
+    ]
+  },
+  "18_08_AE_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      38,
+      37,
+      36,
+      35,
+      33
+    ]
+  }
+}

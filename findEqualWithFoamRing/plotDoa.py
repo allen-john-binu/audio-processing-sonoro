@@ -12,7 +12,7 @@ from scipy.signal import find_peaks
 
 # filename = "./datacollection/dataFromSound/doa_log_20251119_alternating1.csv"      # <-- change if needed
 
-filename = "./datacollection/dataFromSound/doa_log_20251119_newfr_fast.csv"
+filename = "./datacollection/dataFromSound/doa_log_20251119_fast_RCA_speakerChange.csv"
 
 df = pd.read_csv(filename)
 

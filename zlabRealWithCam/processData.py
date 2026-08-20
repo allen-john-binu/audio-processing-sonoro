@@ -132,6 +132,7 @@ def check_timestamp_coverage(master_path, other_path, other_name):
 
 
 # ── Dry run ────────────────────────────────────────────────────────────────────
+# ── Dry run ────────────────────────────────────────────────────────────────────
 def dry_run(runs):
 
     print("\n" + "=" * 72)
@@ -140,32 +141,35 @@ def dry_run(runs):
 
     total = len(runs)
 
-    n_ready = 0
-    n_partial = 0
-    n_no_overlap = 0
-    n_missing = 0
+    fully_covered = []
+    partial = []
+    no_overlap = []
+    missing = []
 
     for r in runs:
-
-        print(f"\n{'─' * 72}")
-        print(f"{r['name']}")
 
         ring_ok = os.path.isfile(r["ring"])
         qualis_ok = os.path.isfile(r["qualis"])
         sound_ok = os.path.isfile(r["sound"])
 
+        # ── Missing files ──────────────────────────────────────────────────────
         if not ring_ok or not qualis_ok or not sound_ok:
 
-            n_missing += 1
+            missing_files = []
 
             if not ring_ok:
-                print(f"✗ Missing Ring   : {r['ring']}")
+                missing_files.append("Ring")
 
             if not qualis_ok:
-                print(f"✗ Missing Qualis : {r['qualis']}")
-                
+                missing_files.append("Qualis")
+
             if not sound_ok:
-                print(f"✗ Missing Sound  : {r['sound']}")
+                missing_files.append("Sound")
+
+            missing.append({
+                "name": r["name"],
+                "files": missing_files,
+            })
 
             continue
 
@@ -177,42 +181,108 @@ def dry_run(runs):
                 "Qualis"
             )
 
-            pct = info["coverage_pct"]
-
-            icon = "✓" if not info["warnings"] else "⚠"
-
-            print(
-                f"{icon} Coverage {pct:.1f}% | "
-                f"Ring [{info['master_start']} -> {info['master_end']}] | "
-                f"Qualis [{info['other_start']} -> {info['other_end']}]"
-            )
-
-            for w in info["warnings"]:
-                print(f"    ⚠ {w}")
+            result = {
+                "name": r["name"],
+                "coverage": info["coverage_pct"],
+                "warnings": info["warnings"],
+                "has_overlap": info["has_overlap"],
+            }
 
             if not info["has_overlap"]:
-                n_no_overlap += 1
+                no_overlap.append(result)
+
             elif info["warnings"]:
-                n_partial += 1
+                partial.append(result)
+
             else:
-                n_ready += 1
+                fully_covered.append(result)
 
         except Exception as e:
-            print(f"✗ Failed coverage check: {e}")
-            n_no_overlap += 1
 
+            no_overlap.append({
+                "name": r["name"],
+                "coverage": 0.0,
+                "warnings": [f"Failed coverage check: {e}"],
+                "has_overlap": False,
+            })
+
+    # ── Sort partial overlaps by coverage ──────────────────────────────────────
+    partial.sort(key=lambda x: x["name"])
+
+    # ── Report ─────────────────────────────────────────────────────────────────
     print("\n" + "=" * 72)
-    print("SUMMARY")
+    print("DRY RUN SUMMARY")
+    print("=" * 72)
+
+    # Fully covered
+    print(f"\n✓ FULLY COVERED ({len(fully_covered)})")
+
+    if fully_covered:
+        for r in fully_covered:
+            print(
+                f"  {r['name']:<40} "
+                f"{r['coverage']:>6.1f}%"
+            )
+    else:
+        print("  None")
+
+    # Partial overlap
+    print(f"\n⚠ PARTIAL OVERLAP ({len(partial)})")
+
+    if partial:
+        for r in partial:
+
+            warning_text = "; ".join(r["warnings"])
+
+            print(
+                f"  {r['name']:<40} "
+                f"{r['coverage']:>6.1f}%   "
+                f"{warning_text}"
+            )
+    else:
+        print("  None")
+
+    # No overlap
+    print(f"\n✗ NO OVERLAP ({len(no_overlap)})")
+
+    if no_overlap:
+        for r in no_overlap:
+
+            warning_text = "; ".join(r["warnings"])
+
+            print(
+                f"  {r['name']:<40} "
+                f"{warning_text}"
+            )
+    else:
+        print("  None")
+
+    # Missing files
+    print(f"\n✗ MISSING FILES ({len(missing)})")
+
+    if missing:
+        for r in missing:
+            print(
+                f"  {r['name']:<40} "
+                f"missing: {', '.join(r['files'])}"
+            )
+    else:
+        print("  None")
+
+    # ── Final counts ───────────────────────────────────────────────────────────
+    print("\n" + "=" * 72)
+    print("TOTAL")
     print("=" * 72)
 
     print(f"Total runs          : {total}")
-    print(f"✓ Fully covered     : {n_ready}")
-    print(f"⚠ Partial coverage  : {n_partial}")
-    print(f"✗ No overlap        : {n_no_overlap}")
-    print(f"✗ Missing files     : {n_missing}")
+    print(f"✓ Fully covered     : {len(fully_covered)}")
+    print(f"⚠ Partial coverage  : {len(partial)}")
+    print(f"✗ No overlap        : {len(no_overlap)}")
+    print(f"✗ Missing files     : {len(missing)}")
 
     print("=" * 72 + "\n")
-
+    
+    
 
 # ── Merge ──────────────────────────────────────────────────────────────────────
 def merge_run(qualis_path, sound_path, ring_path):
