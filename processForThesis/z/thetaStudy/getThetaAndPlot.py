@@ -219,7 +219,7 @@ def main():
     groups = group_files(INPUT_DIR)
 
     for prefix, files_by_index in sorted(groups.items()):
-        batch1 = {i: fp for i, fp in files_by_index.items() if 1 <= i <= 5}
+        batch1 = {i: fp for i, fp in files_by_index.items() if 1 <= i <= 8}
         plot_batch1_overlay(prefix, batch1, OUTPUT_DIR)
 
 

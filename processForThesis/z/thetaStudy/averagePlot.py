@@ -11,9 +11,14 @@ csv_file = "./speaker_angle_at_b_per_file.csv"
 # Mapping from group suffix to volume difference
 volume_difference = {
     "AA": 0.00,
-    "AB": 0.10,
-    "AC": 0.20,
-    "AD": 0.30,
+    "AB": 0.05,
+    "AC": 0.10,
+    "AD": 0.15,
+    "AE": 0.20,
+    "AF": 0.25,
+    "AG": 0.30,
+    "AH": 0.35,
+    "AI": 0.40,
 }
 
 # ============================================================

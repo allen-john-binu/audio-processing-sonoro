@@ -1,0 +1,722 @@
+{
+  "16_08_AA_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AA_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AA_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      28,
+      27,
+      26,
+      25,
+      24
+    ]
+  },
+  "16_08_AA_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      23,
+      22,
+      21,
+      20,
+      19
+    ]
+  },
+  "16_08_AA_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      27
+    ]
+  },
+  "16_08_AA_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AA_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AA_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AB_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AB_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      18,
+      17,
+      16,
+      15,
+      14
+    ]
+  },
+  "16_08_AB_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AB_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      25,
+      24,
+      23,
+      22,
+      21
+    ]
+  },
+  "16_08_AB_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AB_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AB_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AB_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      24,
+      25,
+      23,
+      22
+    ]
+  },
+  "16_08_AC_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AC_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AC_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AC_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AC_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AC_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      28,
+      27,
+      26,
+      25,
+      24
+    ]
+  },
+  "16_08_AC_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      25,
+      24,
+      23,
+      22,
+      26
+    ]
+  },
+  "16_08_AC_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AD_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AD_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      28,
+      27,
+      26,
+      25,
+      24
+    ]
+  },
+  "16_08_AD_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AD_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      28,
+      27,
+      26,
+      25,
+      24
+    ]
+  },
+  "16_08_AD_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AD_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      27,
+      24,
+      23
+    ]
+  },
+  "16_08_AD_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AD_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AE_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AE_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      25,
+      24,
+      23,
+      22,
+      21
+    ]
+  },
+  "16_08_AE_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      25,
+      24,
+      23,
+      22,
+      21
+    ]
+  },
+  "16_08_AE_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AE_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AE_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AE_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AE_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      24,
+      23,
+      22,
+      21,
+      20
+    ]
+  },
+  "16_08_AF_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AF_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AF_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      25,
+      24,
+      23,
+      22,
+      21
+    ]
+  },
+  "16_08_AF_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      24,
+      23,
+      22,
+      21,
+      20
+    ]
+  },
+  "16_08_AF_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AF_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AF_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      28,
+      27,
+      26,
+      25,
+      24
+    ]
+  },
+  "16_08_AF_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AG_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      29,
+      28,
+      27,
+      25,
+      26
+    ]
+  },
+  "16_08_AG_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AG_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      28,
+      27,
+      26,
+      25,
+      24
+    ]
+  },
+  "16_08_AG_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      26,
+      25,
+      24,
+      23,
+      22
+    ]
+  },
+  "16_08_AG_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      28
+    ]
+  },
+  "16_08_AG_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      28,
+      25,
+      24
+    ]
+  },
+  "16_08_AG_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      27,
+      26,
+      25,
+      24,
+      23
+    ]
+  },
+  "16_08_AG_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      29,
+      28,
+      27,
+      26,
+      25
+    ]
+  },
+  "16_08_AH_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      20,
+      19,
+      18,
+      17,
+      16
+    ]
+  },
+  "16_08_AH_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      20,
+      19,
+      17,
+      18,
+      16
+    ]
+  },
+  "16_08_AH_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      21,
+      20,
+      18,
+      19,
+      17
+    ]
+  },
+  "16_08_AH_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      23,
+      22,
+      21,
+      20,
+      19
+    ]
+  },
+  "16_08_AH_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      17,
+      16,
+      15,
+      14,
+      13
+    ]
+  },
+  "16_08_AH_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      20,
+      19,
+      18,
+      17,
+      16
+    ]
+  },
+  "16_08_AH_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      19,
+      18,
+      17,
+      16,
+      20
+    ]
+  },
+  "16_08_AH_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      20,
+      19,
+      18,
+      17,
+      16
+    ]
+  },
+  "16_08_AI_01.csv": {
+    "status": "selected",
+    "selected_indices": [
+      17,
+      18,
+      16,
+      15,
+      14
+    ]
+  },
+  "16_08_AI_02.csv": {
+    "status": "selected",
+    "selected_indices": [
+      18,
+      17,
+      16,
+      15,
+      14
+    ]
+  },
+  "16_08_AI_03.csv": {
+    "status": "selected",
+    "selected_indices": [
+      20,
+      19,
+      18,
+      17,
+      16
+    ]
+  },
+  "16_08_AI_04.csv": {
+    "status": "selected",
+    "selected_indices": [
+      19,
+      18,
+      17,
+      16,
+      15
+    ]
+  },
+  "16_08_AI_05.csv": {
+    "status": "selected",
+    "selected_indices": [
+      18,
+      17,
+      16,
+      15,
+      14
+    ]
+  },
+  "16_08_AI_06.csv": {
+    "status": "selected",
+    "selected_indices": [
+      19,
+      18,
+      17,
+      16,
+      15
+    ]
+  },
+  "16_08_AI_07.csv": {
+    "status": "selected",
+    "selected_indices": [
+      18,
+      17,
+      16,
+      15,
+      14
+    ]
+  },
+  "16_08_AI_08.csv": {
+    "status": "selected",
+    "selected_indices": [
+      21,
+      20,
+      19,
+      18,
+      17
+    ]
+  }
+}
