@@ -4,6 +4,13 @@ import pathlib
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.signal as signal
+import matplotlib as mpl
+mpl.rcParams.update({
+    'font.family': 'serif',
+    'font.size': 15,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+})
 
 # Negative angle robot is on the left, positive angle robot is on the right.
 

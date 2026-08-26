@@ -8,7 +8,9 @@ from scipy.signal import find_peaks
 # Configuration
 # ============================================================
 
-CSV_FILE = "./mergedData/result.csv"
+
+# CSV_FILE = "./mergedData/result.csv"
+CSV_FILE = "./result.csv"
 
 DOA_COLUMNS = [
     f"doa_{i}"
@@ -139,16 +141,21 @@ plt.scatter(
     alpha=0.6,
 )
 
-plt.xlabel("Peak Difference")
-plt.ylabel("Angle of Separation (degrees)")
+plt.xlabel("Peak Difference",fontsize=18)
+plt.ylabel("Angle of Separation (degrees)",fontsize=18)
 
-plt.title(
-    "Peak Difference vs Angle of Separation"
-)
+plt.title("Peak Difference vs Angle of Separation",fontsize=18)
 
 plt.grid(
     True,
     alpha=0.3,
+)
+OUTPUT_FIG = "angular_seperation_vs_peak_difference_z.pdf"
+plt.savefig(
+    OUTPUT_FIG,
+    dpi=300,
+    bbox_inches="tight",
+    format="pdf"
 )
 
 plt.tight_layout()

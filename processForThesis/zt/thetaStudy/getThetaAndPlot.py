@@ -26,6 +26,15 @@ matplotlib.use("Agg")  # never try to open a display / show a window
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+import matplotlib as mpl
+mpl.rcParams.update({
+    'font.family': 'serif',
+    'font.size': 30,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+})
+    
+
 # ------------------------------------------------------------------ #
 # Config - edit these to match your setup
 INPUT_DIR = "../mergedData/"
@@ -148,7 +157,7 @@ def plot_batch1_overlay(prefix: str, filepaths: dict, output_dir: str):
     if not filepaths:
         return
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(20, 20))
     file_handles = []
     b_points = []
 
@@ -188,29 +197,29 @@ def plot_batch1_overlay(prefix: str, filepaths: dict, output_dir: str):
     ax.plot(avg_B[0], avg_B[1], marker="x", markersize=14, markeredgewidth=3,
             color="black", linestyle="None", zorder=6)
 
-    ax.set_title(f"{prefix} - batch1: raw trajectory vs. line map")
+    # ax.set_title(f"{prefix} - batch1: raw trajectory vs. line map")
     ax.set_xlabel("robot_x")
     ax.set_ylabel("robot_y")
     ax.set_aspect("equal", adjustable="box")
 
     # legend 1: colour -> file
-    legend_files = ax.legend(handles=file_handles, fontsize=7,
-                              loc="upper left", title="File")
-    ax.add_artist(legend_files)
+    # legend_files = ax.legend(handles=file_handles, fontsize=24,
+    #                           loc="upper left", title="File")
+    # ax.add_artist(legend_files)
 
     # legend 2: linestyle -> meaning (raw vs. line map)
     style_handles = [
         Line2D([0], [0], color="black", linestyle="-", lw=1.5, label="Raw trajectory"),
-        Line2D([0], [0], color="black", linestyle=":", lw=2, label="Line map (A\u2192B\u2192C)"),
+        Line2D([0], [0], color="black", linestyle=":", lw=2, label="Constructed line map (A\u2192B\u2192C), B is the bifurcation point"),
         Line2D([0], [0], color="black", marker="x", markersize=10, markeredgewidth=3,
-               linestyle="None", label="Average B"),
+               linestyle="None", label="Average Bifuraction Angle of the batch"),
     ]
-    ax.legend(handles=style_handles, fontsize=7, loc="lower right")
+    ax.legend(handles=style_handles, fontsize=24, loc="lower left")
 
     fig.tight_layout()
     os.makedirs(output_dir, exist_ok=True)
-    out_path = os.path.join(output_dir, f"{prefix}_batch1_trajectories.png")
-    fig.savefig(out_path, dpi=150)
+    out_path = os.path.join(output_dir, f"{prefix}_batch1_trajectories.pdf")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight", format="pdf")
     plt.close(fig)
     print(f"Saved: {out_path}")
 

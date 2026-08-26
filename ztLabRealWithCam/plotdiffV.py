@@ -22,30 +22,38 @@ import matplotlib
 matplotlib.use("Agg")  # never try to open a display / show a window
 import matplotlib.pyplot as plt
 
+import matplotlib as mpl
+mpl.rcParams.update({
+    'font.family': 'serif',
+    'font.size': 24,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+})
+
 # ------------------------------------------------------------------ #
 # Config - edit these to match your folders
 INPUT_DIR = "./mergedData/"
 OUTPUT_DIR = "./mergedData/BatchPlots/"
 
 # Only files whose name starts with this are included, e.g. "16_07_E"
-FILE_PREFIX = "09_07_A"
+FILE_PREFIX = "16_07_E"
 
 # Output plot filename (saved inside OUTPUT_DIR)
-OUTPUT_NAME = "09_07_A_all_batches.pdf"
+OUTPUT_NAME = "16_07_E_all_batches.pdf"
 
 # Color assigned to each batch.
 BATCH_COLORS = {
-    "AA": "blue",
-    "AB": "orange",
-    "AC":"green",
-    "AD": "purple",
-    "AE": "red",
+    "EA": "blue",
+    "EB": "orange",
+    "EC": "green",
+    "ED": "red",
 }
 
 # {
 #     "AA": "blue",
 #     "AB": "orange",
 #     "AD": "green",
+#     "AD": "purple",
 #     "AE": "red",
 #     "CA": "blue",
 #     "CB": "orange",
@@ -59,16 +67,15 @@ BATCH_COLORS = {
 
 # Velocity corresponding to each batch (used in legend)
 BATCH_V = {
-    "AA": 0.0,
-    "AB": 0.05,
-    "AC": 0.1,
-    "AD": 0.15,
-    "AE": 0.2,
+    "EA": 0.3,
+    "EB": 0.4,
+    "EC": 0.5,
+    "ED": 0.6,
 }
 # ------------------------------------------------------------------ #
 
 # Matches e.g. "16_07_EA_01.csv" -> batch="EA", index="01"
-FILENAME_RE = re.compile(r"^09_07_(?P<batch>[A-Z]+)_(?P<index>\d{2})\.csv$")
+FILENAME_RE = re.compile(r"^16_07_(?P<batch>[A-Z]+)_(?P<index>\d{2})\.csv$")
 
 
 def collect_files(input_dir: str, file_prefix: str):
@@ -93,7 +100,7 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
         print("No matching files found.")
         return
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(16, 16))
 
     for batch in sorted(batches.keys()):
         color = BATCH_COLORS.get(batch)
@@ -116,7 +123,7 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
             # one entry per batch instead of one per file.
             if first_line_for_batch:
                 if batch in BATCH_V:
-                    label = f"d = {BATCH_V[batch]}"
+                    label = f"ν = {BATCH_V[batch]}"
                 else:
                     label = batch
                 first_line_for_batch = False
@@ -132,10 +139,10 @@ def plot_all(batches: dict, output_dir: str, output_name: str):
                 label=label,
             )
 
-    ax.set_title("Trajectories for different difference of volume ratio of the two speakers")
-    ax.set_xlabel("robot_x")
-    ax.set_ylabel("robot_y")
-    ax.legend(title="d, difference of volume ratio of the two speakers", fontsize=9, loc="best")
+    ax.set_title("Trajectories for different shape of the connectivity control")
+    ax.set_xlabel("robot_x",fontsize=30)
+    ax.set_ylabel("robot_y",fontsize=30)
+    ax.legend(title="ν, shape of the connectivity control", fontsize=24, loc="best")
     ax.set_aspect("equal", adjustable="box")
     fig.tight_layout()
 

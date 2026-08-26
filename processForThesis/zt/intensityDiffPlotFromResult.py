@@ -58,7 +58,6 @@ EXPERIMENT_COLORS = {
     "AB": "tab:orange",
     "AC": "tab:green",
     "AD": "tab:red",
-    "AE": "tab:purple",
 }
 
 

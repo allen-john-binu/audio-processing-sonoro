@@ -7,32 +7,32 @@ import matplotlib.pyplot as plt
 # ============================================================
 
 
-INPUT_CSV = "./z/mergedData/decisionResults.csv"
-OUTPUT_FIG = "volume_difference_vs_decision_z.pdf"
+INPUT_CSV = "./zt/mergedData/decisionResults.csv"
+OUTPUT_FIG = "volume_difference_vs_decision_zt.pdf"
 
 # Only process filenames starting with this text
-FILE_PREFIX = "16_08_"
+FILE_PREFIX = "19_08_"
 
 
 # Volume difference for each condition
-volume_diff = {
-    "AA": 0.00,
-    "AB": 0.05,
-    "AC": 0.10,
-    "AD": 0.15,
-    "AE": 0.20,
-    "AF": 0.25,
-    "AG": 0.30,
-    "AH": 0.35,
-    "AI": 0.40,
-}
-
 # volume_diff = {
-#     "AA": 0.0,
-#     "AB": 0.1,
-#     "AC": 0.2,
-#     "AD": 0.3,
+#     "AA": 0.00,
+#     "AB": 0.05,
+#     "AC": 0.10,
+#     "AD": 0.15,
+#     "AE": 0.20,
+#     "AF": 0.25,
+#     "AG": 0.30,
+#     "AH": 0.35,
+#     "AI": 0.40,
 # }
+
+volume_diff = {
+    "AA": 0.0,
+    "AB": 0.1,
+    "AC": 0.2,
+    "AD": 0.3,
+}
 
 
 # ============================================================
@@ -170,7 +170,7 @@ ax.plot(
 
 # Formatting
 ax.set_xlabel(
-    "Difference in speaker volume ratio",
+    "Absolute amplitude difference, d",
     fontsize=13
 )
 

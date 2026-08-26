@@ -26,6 +26,14 @@ matplotlib.use("Agg")  # never try to open a display / show a window
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+import matplotlib as mpl
+mpl.rcParams.update({
+    'font.family': 'serif',
+    'font.size': 24,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+})
+
 # ------------------------------------------------------------------ #
 # Config - edit these to match your setup
 INPUT_DIR = "../mergedData/"
@@ -194,7 +202,7 @@ def plot_batch1_overlay(prefix: str, filepaths: dict, output_dir: str):
     ax.set_aspect("equal", adjustable="box")
 
     # legend 1: colour -> file
-    legend_files = ax.legend(handles=file_handles, fontsize=7,
+    legend_files = ax.legend(handles=file_handles, fontsize=20,
                               loc="upper left", title="File")
     ax.add_artist(legend_files)
 
@@ -205,12 +213,13 @@ def plot_batch1_overlay(prefix: str, filepaths: dict, output_dir: str):
         Line2D([0], [0], color="black", marker="x", markersize=10, markeredgewidth=3,
                linestyle="None", label="Average B"),
     ]
-    ax.legend(handles=style_handles, fontsize=7, loc="lower right")
+    ax.legend(handles=style_handles, fontsize=20, loc="lower right")
 
     fig.tight_layout()
     os.makedirs(output_dir, exist_ok=True)
-    out_path = os.path.join(output_dir, f"{prefix}_batch1_trajectories.png")
-    fig.savefig(out_path, dpi=150)
+    out_path = os.path.join(output_dir, f"{prefix}_batch1_trajectories.pdf")
+    fig.savefig(out_path, dpi=150, 
+    bbox_inches="tight", format="pdf")
     plt.close(fig)
     print(f"Saved: {out_path}")
 

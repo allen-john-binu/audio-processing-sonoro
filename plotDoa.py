@@ -2,6 +2,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+import matplotlib as mpl
+mpl.rcParams.update({
+    'font.family': 'serif',
+    'font.size': 15,
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
+})
+
 
 def doa_to_row(
     doa_estimate,
@@ -38,7 +46,7 @@ df = pd.read_csv("hi.csv")
 angles = np.array(df.columns[2:], dtype=float)
 
 # Single row of intensity values
-intensities = df.iloc[27, 2:].astype(float).values
+intensities = df.iloc[277, 2:].astype(float).values
 
 
 # ============================================================
