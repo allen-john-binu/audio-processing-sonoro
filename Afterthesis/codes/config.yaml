@@ -1,0 +1,60 @@
+defaults:
+  - _self_
+
+timestamp_bool: true
+recording_bool: true
+
+trigger_level: 62
+critical_level: 65
+# motor noise at 30% = 53 DbSPL, 1m detection: 0.5 ampl 55 dbspl; 0.7 ampl 58 dbspl: 0.9 ampl 59 dbspl, 0.5 m: 0.7 ampl 69 dbspl, 0.9 ampl 70 dbspl.
+
+c: 343
+fs: 16000
+rec_samplerate: ${fs}
+radius: 0.0323
+shift: 45
+call_rate: 4
+doa_freq_range: [1000, 2800]
+duration_out: 0.010
+amplitude: 1
+start_f: 3500
+end_f: 500
+cutoff_freq: ${doa_freq_range[0]}
+
+ref: 2
+analyzed_buffer_time: 0.02
+channels: 5
+input_block_ms: 1  # input callback block length (ms); smaller = less latency but more CPU (1000/s at 1 ms)
+call_guard_time: 0.025  # s safety margin kept from the own call on both sides
+# Own call as heard by the robot's mics, in s after the emission time (measured on 192.168.3.102)
+self_call_onset: 0.0095  # own call starts to be heard (ReSpeaker internal latency)
+self_call_end: 0.0263  # own call and its echoes have died out
+nfft: 128
+
+theta_das_start: 0
+theta_das_end: 360
+theta_das_step: 3
+N_peaks: 1
+
+speed_percent: 0
+turn_time: 0.08  # s per audio-driven turn; angle = behaviour_angular_speed * turn_time
+behaviour_angular_speed: 0  # deg/s (170 deg/s max)
+arena_angular_speed: 0  # deg/s (170 deg/s max)
+line_avoid_time: 1  # s to turn when detecting the boundary line; angle = arena_angular_speed * time
+
+# Audio steering: half-width (deg) around the front (0 deg) in which a sound triggers a turn
+attraction_angle_range: 40  # trigger < level < critical -> turn towards sound if within +/- this
+repulsion_angle_range: 90  # level > critical -> turn away from sound if within +/- this
+
+# Stuck detection: measured wheel speed vs target speed
+stuck_speed_ratio: 0.7  # allowed |target - measured| per wheel, as a fraction of the forward speed
+stuck_time: 1.5  # s of sustained mismatch before disentangling
+unstuck_back_time: 1.5  # s moving backward when stuck
+unstuck_turn_time: 2.4  # s to turn away (random direction) after backing up; angle = arena_angular_speed * time
+
+
+left_sensor_threshold: 900  # line detected when prox.ground.delta is ABOVE this (bright line)
+right_sensor_threshold: ${left_sensor_threshold}
+
+# calib_duration_s: 1.0   # seconds, calibration rotation duration
+# calib_wlen: 16            # STFT window length of the whitened beamformer (calibration block)

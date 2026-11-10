@@ -11,22 +11,23 @@ import matplotlib.pyplot as plt
 # =========================
 # Generate sweeps
 # =========================
-fs = 48000
+fs = 16000
+
 all_sweeps = []
 
 durn = 5e-3  # 5 ms
 
-wait_time = 0.01  # seconds
+wait_time = 0.5  # seconds
 
 t = np.linspace(0, durn, int(fs * durn), endpoint=False)
-sweep = signal.chirp(t, 2000, t[-1], 24000)
+sweep = signal.chirp(t, 500, t[-1], 3500)
 sweep *= signal.windows.tukey(len(sweep), 0.2)
 sweep *= 0.8
 sweep = np.pad(sweep, (int(fs * wait_time), int(fs * wait_time)))
 
 sweeps_combined = sweep
 
-target_duration = 10  # seconds
+target_duration = 1200  # seconds
 repeats = int(np.ceil(target_duration / (len(sweeps_combined) / fs)))
 long_signal = np.tile(sweeps_combined, repeats)
 long_signal = long_signal[:int(fs * target_duration)]
@@ -59,36 +60,36 @@ long_signal = long_signal[:int(fs * target_duration)]
 # =========================
 # Gaussian parameters
 # =========================
-sigma = 0.2  # try: 0.025, 0.05, 0.1, 0.2
+# sigma = 0.2  # try: 0.025, 0.05, 0.1, 0.2
 
-base_left = 0.6
-base_right = 0.6
+# base_left = 0.6
+# base_right = 0.6
 
-# =========================
-# Generate noise (once)
-# =========================
-np.random.seed(0)  # optional (reproducible)
+# # =========================
+# # Generate noise (once)
+# # =========================
+# np.random.seed(0)  # optional (reproducible)
 
-noise_left = np.random.normal(0, sigma, size=len(long_signal))
-noise_right = np.random.normal(0, sigma, size=len(long_signal))
+# noise_left = np.random.normal(0, sigma, size=len(long_signal))
+# noise_right = np.random.normal(0, sigma, size=len(long_signal))
 
-# =========================
-# Volume envelopes (arrays)
-# =========================
-left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
-right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
+# # =========================
+# # Volume envelopes (arrays)
+# # =========================
+# left_volumes = np.clip(base_left + noise_left, 0.0, 1.0)
+# right_volumes = np.clip(base_right + noise_right, 0.0, 1.0)
 # # =========================
 # Constant volumes
 # =========================
 # =========================
 # Constant channel volumes
 # =========================
-# base_left = 1.0
+base_left = 1.0
 
-# base_right = 0.8
+base_right = 0.0 #real left
 
-# left_volumes = np.full(len(long_signal), base_left)
-# right_volumes = np.full(len(long_signal), base_right)
+left_volumes = np.full(len(long_signal), base_left)
+right_volumes = np.full(len(long_signal), base_right)
 
 stereo_signal = np.column_stack((
     long_signal * left_volumes,
@@ -220,177 +221,63 @@ finally:
     # =========================
     # Plot saved volume data
     # =========================
-    if csv_rows and not plot_dont:
+if csv_rows and not plot_dont:
+    times = [float(row[2]) for row in csv_rows]
+    left_vals = [float(row[3]) for row in csv_rows]
+    right_vals = [float(row[4]) for row in csv_rows]
 
-                # =====================================================
-        # Side-by-side plots
-        # =====================================================
+    plt.figure(figsize=(12, 5))
 
-        times = [float(row[2]) for row in csv_rows]
-        left_vals = [float(row[3]) for row in csv_rows]
-        right_vals = [float(row[4]) for row in csv_rows]
+    plt.plot(times, left_vals, label="Left Volume", color="blue")
+    plt.plot(times, right_vals, label="Right Volume", color="red")
 
-        fig, (ax1, ax2) = plt.subplots(
-            1, 2,
-            figsize=(16, 5)
-        )
+    plt.xlabel("Time (s)",
+            fontsize=18)
+    plt.ylabel("amplitude scaling factor",
+            fontsize=18)
+    plt.ylim(0, 1.2)
 
-        # =====================================================
-        # LEFT: Volume envelopes
-        # =====================================================
+    plt.grid(True)
+    plt.legend()
 
-        ax1.plot(
-            times,
-            left_vals,
-            label="Left Volume",
-            color="blue"
-        )
+    # -----------------------------
+    # Double-headed vertical arrow
+    # -----------------------------
+    arrow_x = 3.75
 
-        ax1.plot(
-            times,
-            right_vals,
-            label="Right Volume",
-            color="red"
-        )
+    # Actual values of the two curves at arrow_x
+    left_at_x = np.interp(arrow_x, times, left_vals)
+    right_at_x = np.interp(arrow_x, times, right_vals)
 
-        ax1.set_xlabel(
-            "Time (s)",
-            fontsize=18
-        )
+    arrow_bottom = min(left_at_x, right_at_x)
+    arrow_top = max(left_at_x, right_at_x)
 
-        ax1.set_ylabel(
-            "amplitude scaling factor",
-            fontsize=18
-        )
-
-        ax1.set_ylim(0, 1.2)
-
-        ax1.tick_params(
-            axis="both",
-            labelsize=16
-        )
-
-        ax1.grid(True)
-
-        ax1.legend(
-            fontsize=16
-        )
-
-        # =====================================================
-        # RIGHT: Gaussian noise profile
-        # =====================================================
-
-        mean = base_left
-        sd = sigma
-
-        x = np.linspace(
-            mean - 3 * sd,
-            mean + 3 * sd,
-            1000
-        )
-
-        gaussian = (
-            1 / (sd * np.sqrt(2 * np.pi))
-            * np.exp(
-                -0.5 * ((x - mean) / sd) ** 2
-            )
-        )
-
-        ax2.plot(
-            x,
-            gaussian,
+    plt.annotate(
+        "",
+        xy=(arrow_x, arrow_top),
+        xytext=(arrow_x, arrow_bottom),
+        arrowprops=dict(
+            arrowstyle="<->",
             color="steelblue",
-            linewidth=2.5
+            linewidth=2.5,
+            mutation_scale=18
         )
+    )
 
-        # Mean
-        ax2.axvline(
-            mean,
-            color="black",
-            linewidth=1.5
-        )
+    # Label "a"
+    plt.text(
+        arrow_x - 0.05,
+        (arrow_top + arrow_bottom) / 2,
+        "d",
+        fontsize=32,
+        va="center",
+        ha="right"
+    )
 
-        # ±1 standard deviation
-        lower_sd = mean - sd
-        upper_sd = mean + sd
-
-        ax2.axvline(
-            lower_sd,
-            color="red",
-            linestyle="--",
-            linewidth=1.5
-        )
-
-        ax2.axvline(
-            upper_sd,
-            color="red",
-            linestyle="--",
-            linewidth=1.5
-        )
-
-        # =====================================================
-        # SD arrow: mean -> mean + sd
-        # =====================================================
-
-        arrow_y = max(gaussian) * 0.40
-
-        ax2.annotate(
-            "",
-            xy=(upper_sd, arrow_y),
-            xytext=(mean, arrow_y),
-            arrowprops=dict(
-                arrowstyle="<->",
-                color="steelblue",
-                linewidth=2.5,
-                mutation_scale=18
-            )
-        )
-
-        # "sd" label
-        ax2.text(
-            (mean + upper_sd) / 2,
-            arrow_y + 0.08,
-            "sd",
-            fontsize=24,
-            fontweight="bold",
-            ha="center",
-            va="bottom"
-        )
-
-        ax2.set_title(
-            "Gaussian Distribution",
-            fontsize=20
-        )
-
-        ax2.set_xlabel(
-            "Volume",
-            fontsize=18
-        )
-
-        ax2.set_ylabel(
-            "Probability density",
-            fontsize=18
-        )
-
-        ax2.tick_params(
-            axis="both",
-            labelsize=16
-        )
-
-        ax2.grid(True)
-
-        # =====================================================
-        # Overall layout
-        # =====================================================
-
-        plt.tight_layout()
-
-        print("Side-by-side plot saved.")
-
-        plt.savefig(
-            "noise_modulation_with_profile.pdf",
-            bbox_inches="tight",
-            format="pdf"
-        )
-
-        plt.show()
+    print("Plot saved.")
+    plt.savefig(
+        "constant_modulation.pdf",
+        bbox_inches="tight",
+        format="pdf"
+    )
+    plt.show()

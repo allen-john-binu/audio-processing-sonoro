@@ -8,13 +8,13 @@ seed = 100
 np.random.seed(seed)
 py_seed(seed)
 
-target_pos1 = np.array([50.0, 50.0])  
-target_pos2 = np.array([50.0, -50.0])  
+target_pos1 = np.array([50.0, 10.0])  
+target_pos2 = np.array([50.0, -10.0])  
 
 class RA():
     def __init__(self):
         self.Ns = 120
-        self.v = 0.5
+        self.v = 0.544
         self.h_0 = 0.051
         self.h_b = 0.0122
         self.v_0 = 60
@@ -53,7 +53,7 @@ target_reached_L = -1
 for t in range (L):
     dist_to_target1 = euclidean_distance(pos[t], target_pos1)
     dist_to_target2 = euclidean_distance(pos[t], target_pos2)
-    if (dist_to_target1 > previous_distance1) and (dist_to_target2 > previous_distance2):
+    if (dist_to_target1 < 5.0) or (dist_to_target2 < 5.0):
         target_reached_L = t
         break
     # if (dist_to_target2 > previous_distance1):
