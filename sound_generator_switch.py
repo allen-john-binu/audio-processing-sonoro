@@ -14,8 +14,8 @@ target_duration = 6000  # Total playback duration: 10 minutes
 # =========================
 # Speaker volume controls
 # =========================
-base_left = 0.60
-base_right = 1.0 #real left
+base_left = 0.50 #real left
+base_right = 1.0 
 
 # =========================
 # Generate chirp waveform
